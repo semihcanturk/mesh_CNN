@@ -16,17 +16,11 @@ convolve = autograd.scipy.signal.convolve
 A_default = hips_convnet.A_def
 B_default = hips_convnet.A_def
 
-def transfer_matrices():
-    exec(open("hips_convnet.py").read())
-    A_def = hips_convnet.A_def
-    B_def = hips_convnet.B_def
-    return A_def, B_def
 
-#TODO
 def convolve_semih(a, b):
     out = []
     a_dims = a.shape
-    b = as_strided_semih(b, 5, 1) #arbitrary patch & stride for now
+    b = as_strided_semih(b, 5, 1)  # arbitrary patch & stride for now
 
     for ctr in range(a_dims[1]):
         temp = a[0][ctr]
@@ -126,11 +120,13 @@ def einsum_tensordot(A, B, axes, reverse=False):
         B_axnums[i_B] = sum_axnum + i_sum
     return einsum_semih(A, A_axnums, B, B_axnums)
 
+
 def pad_to_full(A, B, axes):
     A_pad = [(0, 0)] * A.ndim
     for ax_A, ax_B in zip(*axes):
         A_pad[ax_A] = (B.shape[ax_B] - 1,) * 2
     return npo.pad(A, A_pad, mode='constant')
+
 
 def convolve(A, B, axes=None, dot_axes=[(),()], mode='full'):
     assert mode in ['valid', 'full'], "Mode {0} not yet implemented".format(mode)
@@ -197,19 +193,19 @@ if __name__ == '__main__':
     B = np.random.randint(0, 99, size=(10, 1, 28, 28), dtype=np.int64)
     B_view_semih = as_strided_semih(B, 5, 1)
 
-    B_file = open('b.pickle', 'rb')
-    B_2 = pickle.load(B_file)  # variables come out in the order you put them in
-    B_file.close()
+    #B_file = open('b.pickle', 'rb')
+    #B_2 = pickle.load(B_file)  # variables come out in the order you put them in
+    #B_file.close()
 
-    A_file = open('a.pickle', 'rb')
-    A_2 = pickle.load(A_file)  # variables come out in the order you put them in
-    A_file.close()
+    #A_file = open('a.pickle', 'rb')
+    #A_2 = pickle.load(A_file)  # variables come out in the order you put them in
+    #A_file.close()
 
-    #conv = convolve(B_2, A_2, axes=([2, 3], [2, 3]), dot_axes=([1], [0]), mode='valid')
+    conv = convolve(B, A, axes=([2, 3], [2, 3]), dot_axes=([1], [0]), mode='valid')
 
-    B_2 = B_2[:100]
+    #B_2 = B_2[:100]
     #B_view_semih_2 = as_strided_semih(B_2, 5, 1)
-    conv_semih = convolve_semih(A_2, B_2)
+    conv_semih = convolve_semih(A, B)
     #conv_by_einsum = npo.einsum(A_2, [12, 1, 10, 11], B_view_semih_2, [4, 8, 9, 10, 11])
     print(conv_semih.shape)
     print(conv_semih)

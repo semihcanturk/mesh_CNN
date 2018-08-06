@@ -10,7 +10,7 @@ import mnist
 import hips_convnet
 import pickle
 
-def as_strided_seq(b, patch, stride=1):
+def as_strided_seq(b, patch, stride):
     #b is array to be strided
     #patch is the length of one side of the patch. Must be smaller than smallest dimension of b
     #stride is how much of a stride we want, we may wanna default it to 1
@@ -92,15 +92,6 @@ def convolve_seq(a, b):
             out = npo.vstack((out, [filters]))
             filters = []
     return out
-
-
-def random_example():
-    A = np.random.randint(0, 99, size=(1, 6, 5, 5), dtype=np.int64)
-    B = np.random.randint(0, 99, size=(10, 1, 28, 28), dtype=np.int64)
-
-    conv = convolve_seq(A, B)
-    print(conv.shape)
-    print(conv)
 
 
 def mnist_example():
