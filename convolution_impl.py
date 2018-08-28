@@ -11,10 +11,10 @@ import hips_convnet
 import pickle
 
 def as_strided_seq(b, patch, stride):
-    #b is array to be strided
-    #patch is the length of one side of the patch. Must be smaller than smallest dimension of b
-    #stride is how much of a stride we want, we may wanna default it to 1
-    #TODO: How to deal with padding?
+    # b is array to be strided
+    # patch is the length of one side of the patch. Must be smaller than smallest dimension of b
+    # stride is how much of a stride we want, we may wanna default it to 1
+    # TODO: How to deal with padding?
     dims = b.shape
     ex_ct = dims[0]
     if dims[2] != dims[3]:
@@ -107,3 +107,7 @@ def mnist_example():
     conv = convolve_seq(A, B)
     print(conv.shape)
     print(conv)
+
+
+if __name__ == '__main__':
+    mnist_example()
