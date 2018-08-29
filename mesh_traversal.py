@@ -232,7 +232,8 @@ filters = np.random.rand(6,7)    # 6 filters, length 7 each
 def mesh_convolve(mesh, filters):
     center = 93 # arbitrary
     r = 1   # arbitrary
-    strided_mesh = mesh_strider(mesh, center, r)
+    max_radius = 20 # this should be derived from the mesh itself
+    strided_mesh = mesh_strider(mesh, center, r, max_radius=max_radius)
     arr = []
     for f in filters:
         row = []
@@ -249,7 +250,8 @@ def mesh_convolve(mesh, filters):
 
 
 # In[22]
-conv = mesh_convolve(region, filters)
+large_region = find_region(93, 20)
+conv = mesh_convolve(large_region, filters)
 print("Convolution Result: ")
 print(conv)
 
