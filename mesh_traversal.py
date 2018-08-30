@@ -192,22 +192,8 @@ def find_region(vertex, r):
         closest_ix = next_list[line_dists.index(min(line_dists))]
     return verts
 
+
 # In[18]:
-# API done, some examples follow
-
-
-region = find_region(93, 3)
-print(region)
-
-lev0 = region[0]
-lev1 = region[1:7]
-lev2 = region[7:]
-print(lev0)
-print(lev1)
-print(lev2)
-
-
-# In[19]:
 def mesh_strider(mesh, center, radius, max_radius = 3):
     # max_radius: the radius covering the whole mesh
     patches = []
@@ -217,18 +203,7 @@ def mesh_strider(mesh, center, radius, max_radius = 3):
     return patches
 
 
-# In[20]:
-center = 93
-r = 1
-strides = mesh_strider(region, center, r)
-print("Strides: ")
-print(strides)
-
-np.random.seed(5)
-filters = np.random.rand(6,7)    # 6 filters, length 7 each
-
-
-# In[21]
+# In[19]
 def mesh_convolve(mesh, filters):
     center = 93 # arbitrary
     r = 1   # arbitrary
@@ -248,12 +223,6 @@ def mesh_convolve(mesh, filters):
             row = []
     return arr
 
-
-# In[22]
-large_region = find_region(93, 20)
-conv = mesh_convolve(large_region, filters)
-print("Convolution Result: ")
-print(conv)
 
 
 
