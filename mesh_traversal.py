@@ -1,7 +1,3 @@
-
-# coding: utf-8
-
-# In[1]:
 import os
 os.environ['ETS_TOOLKIT'] = 'qt4'
 import openmesh as om
@@ -9,15 +5,11 @@ import autograd.numpy as np
 import numpy as npo
 import math
 from numpy import linalg as LA
-
-# In[2]:
-mesh = om.TriMesh()
-
-# In[3]:
 from numpy import genfromtxt
 
+mesh = om.TriMesh()
 
-# In[15]
+
 # API
 def create_adj_mtx(coords_file, tri_file):
     if isinstance(coords_file, str) and isinstance(tri_file, str):
@@ -57,7 +49,6 @@ def get_dist(coords, v,j):
     return math.sqrt((coords1[0]-coords2[0])**2 + (coords1[1]-coords2[1])**2 + (coords1[2]-coords2[2])**2)
 
 
-# In[16]
 def get_order(adj_mtx, coords, ix_list, closest_ix):
     arr = []
     seen = []
@@ -82,7 +73,7 @@ def get_order(adj_mtx, coords, ix_list, closest_ix):
     if len(arr) == len(ix_list):
         return arr
 
-    while (len(arr) != len(ix_list)):
+    while len(arr) != len(ix_list):
         if len(neigh_list) == 2:
             v1 = neigh_list[0]
             v2 = neigh_list[1]
@@ -130,9 +121,8 @@ def get_order(adj_mtx, coords, ix_list, closest_ix):
             return arr
 
 
-# In[17]:
 def find_region(adj_mtx, coords, vertex, r):
-    verts = []
+    verts = list()
 
     # level_0
     verts.append(vertex)
@@ -180,61 +170,124 @@ def find_region(adj_mtx, coords, vertex, r):
     return verts
 
 
-# In[17]:
-def traverse_mesh(coords, triangles, center):
+def traverse_mesh(coords, triangles, center, stride=1):
     adj_mtx, coords, triangles = create_adj_mtx(coords, triangles)
 
-    vertex = center
-    verts = []
+    if stride == 1:
+        vertex = center
+        verts = list()
 
-    # level_0
-    verts.append(vertex)
-    v = vertex
+        # level_0
+        verts.append(vertex)
+        v = vertex
 
-    # find closest point in level 1
-    row = adj_mtx[v]
-    ix_list = np.nonzero(row)
-    ix_list = ix_list[0]
-    dists = []
-    for j in ix_list:
-        d = get_dist(coords, v, j)
-        dists.append(d)
-    ix_min = ix_list[dists.index(min(dists))]
-    closest_ix = ix_min
-
-    # levels_>=1
-    while len(verts) != len(adj_mtx[0]):    # until all vertices are seen
-        # this is the closest vertex of the new level
-        # find the ordering of the level
-        arr = get_order(adj_mtx, coords, ix_list, closest_ix)
-        verts = verts + arr
-        # get next level: for each in ix_list, get neighbors that are not in <verts>, then add them to the new list
-        next_list = []
+        # find closest point in level 1
+        row = adj_mtx[v]
+        ix_list = np.nonzero(row)
+        ix_list = ix_list[0]
+        dists = []
         for j in ix_list:
-            new_row = adj_mtx[j]
-            new_row = np.nonzero(new_row)
-            new_row = new_row[0]
+            d = get_dist(coords, v, j)
+            dists.append(d)
+        ix_min = ix_list[dists.index(min(dists))]
+        closest_ix = ix_min
 
-            for k in new_row:
-                if k not in verts:
-                    next_list.append(k)
-        next_list = list(set(next_list))
-        if len(next_list) == 0:
-            continue
-        # find starting point of next level using line eq
-        c1 = coords[vertex]
-        c2 = coords[closest_ix]
-        line_dists = []
-        for j in next_list:
-            c3 = coords[j]
-            line_dist = LA.norm(np.cross(c2 - c1, c1 - c3)) / LA.norm(c2 - c1)  # not exactly sure of this
-            line_dists.append(line_dist)
-        ix_list = next_list
-        closest_ix = next_list[line_dists.index(min(line_dists))]
-    return verts
+        # levels_>=1
+        while len(verts) != len(adj_mtx[0]):    # until all vertices are seen
+            # this is the closest vertex of the new level
+            # find the ordering of the level
+            arr = get_order(adj_mtx, coords, ix_list, closest_ix)
+            verts = verts + arr
+            # get next level: for each in ix_list, get neighbors that are not in <verts>, then add them to the new list
+            next_list = []
+            for j in ix_list:
+                new_row = adj_mtx[j]
+                new_row = np.nonzero(new_row)
+                new_row = new_row[0]
+
+                for k in new_row:
+                    if k not in verts:
+                        next_list.append(k)
+            next_list = list(set(next_list))
+            if len(next_list) == 0:
+                continue
+            # find starting point of next level using line eq
+            c1 = coords[vertex]
+            c2 = coords[closest_ix]
+            line_dists = []
+            for j in next_list:
+                c3 = coords[j]
+                line_dist = LA.norm(np.cross(c2 - c1, c1 - c3)) / LA.norm(c2 - c1)  # not exactly sure of this
+                line_dists.append(line_dist)
+            ix_list = next_list
+            closest_ix = next_list[line_dists.index(min(line_dists))]
+        return verts
+
+    else:   # multiple stride case
+
+        vertex = center
+        verts = list()
+
+        # level_0
+        verts.append(vertex)
+        v = vertex
+
+        seen = list()
+        seen.append(v)
+
+        row = adj_mtx[v]
+        ix_list = np.nonzero(row)
+        ix_list = ix_list[0]
+        dists = []
+        for j in ix_list:
+            d = get_dist(coords, v, j)
+            dists.append(d)
+        ix_min = ix_list[dists.index(min(dists))]
+        closest_ix = ix_min
+
+        add_to_verts = False
+        ctr = 1
+        # levels_>=1
+        while len(seen) != len(adj_mtx[0]):  # until all vertices are seen
+            # this is the closest vertex of the new level
+            # find the ordering of the level
+            arr = get_order(adj_mtx, coords, ix_list, closest_ix)
+            seen = seen + arr
+
+            if add_to_verts:    # add only every other level to the traversal list
+                temp_arr = arr[::stride]
+                verts = verts + temp_arr
+            # get next level: for each in ix_list, get neighbors that are not in <verts>, then add them to the new list
+            ctr = ctr + 1
+            if ctr % stride == 0:
+                add_to_verts = True
+            else:
+                add_to_verts = False
+            next_list = []
+            for j in ix_list:
+                new_row = adj_mtx[j]
+                new_row = np.nonzero(new_row)
+                new_row = new_row[0]
+
+                for k in new_row:
+                    if k not in seen:
+                        next_list.append(k)
+            next_list = list(set(next_list))
+            if len(next_list) == 0:
+                continue
+            # find starting point of next level using line eq
+            c1 = coords[vertex]
+            c2 = coords[closest_ix]
+            line_dists = []
+            for j in next_list:
+                c3 = coords[j]
+                line_dist = LA.norm(np.cross(c2 - c1, c1 - c3)) / LA.norm(c2 - c1)  # not exactly sure of this
+                line_dists.append(line_dist)
+            ix_list = next_list
+            closest_ix = next_list[line_dists.index(min(line_dists))]
+        return verts
 
 
-# In[18]:
 def mesh_strider(mesh, adj_mtx, coords, center, radius, max_radius = 3):
     # max_radius: the radius covering the whole mesh
     patches = []
@@ -244,7 +297,6 @@ def mesh_strider(mesh, adj_mtx, coords, center, radius, max_radius = 3):
     return patches
 
 
-# In[19]
 def mesh_convolve(mesh, filters, adj_mtx, coords):
     center = 93 # arbitrary
     r = 1   # arbitrary

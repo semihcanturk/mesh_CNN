@@ -2,10 +2,9 @@ import os
 os.environ['ETS_TOOLKIT'] = 'qt4'
 import openmesh as om
 import autograd.numpy as np
-import mesh_traversal
 import numpy as npo
+import mesh_traversal
 import math
-from numpy import linalg as LA
 
 # neighbor_count = adj_mtx.sum(axis=0)    # vertices with ids 0:11 have 5 neighbors (causing 5-bug), all others 6
 # neighs_0 = npo.nonzero(adj_mtx[0])
@@ -63,5 +62,8 @@ for i in faces:
 
 om.write_mesh('icosahedron.off', mesh)
 
-vertex_list = mesh_traversal.traverse_mesh(coords, faces, 0)
-print(vertex_list)
+vertex_list = mesh_traversal.traverse_mesh(coords, faces, 0, 2)
+print(vertex_list)  # [0] = Level 0, [8, 2, 9] = Level 2, only even indices, [6, 4] discarded as stride = 2
+
+vertex_list = mesh_traversal.traverse_mesh(coords, faces, 0, 3)
+print(vertex_list)  # [0] = Level 0, [3] = Level 3

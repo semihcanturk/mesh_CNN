@@ -1,14 +1,13 @@
 import os
 os.environ['ETS_TOOLKIT'] = 'qt4'
 import openmesh as om
+from numpy import genfromtxt
 import autograd.numpy as np
-import mesh_traversal
 import numpy as npo
-import math
-from numpy import linalg as LA
+import mesh_traversal
+
 mesh = om.TriMesh()
 
-from numpy import genfromtxt
 data0 = genfromtxt('data0.csv', delimiter=',')  # these include the coordinates for each point
 data1 = genfromtxt('data1.csv', delimiter=',')  # these include the vertices in each triangle
 
@@ -40,6 +39,6 @@ for i in data1:
     adj_mtx[p2][p3] = 1
     adj_mtx[p3][p2] = 1
 
-center = 93 # id of the center vertex
-radius = 10 # desired radius
+center = 93  # id of the center vertex, arbitrary
+radius = 10  # desired radius, the algorithm will perform a BFS of this depth
 patch = mesh_traversal.find_region(center, radius)  # the patch to be visualised on the brain
