@@ -42,8 +42,8 @@ def create_adj_mtx(coords_file, tri_file):
         adj_mtx[p2][p3] = 1
         adj_mtx[p3][p2] = 1
 
-    #sparse_adj = sparse.csr_matrix(adj_mtx)
-    return adj_mtx, coords, triangles
+    sparse_adj = sparse.csr_matrix(adj_mtx)
+    return sparse_adj, coords, triangles
 
 
 def get_dist(coords, v,j):
@@ -62,9 +62,10 @@ def get_order(adj_mtx, coords, ix_list, closest_ix):
     neigh_list = []
 
     list_of_lists = []
+    nz = adj_mtx.tolil().rows
+
     for i in ix_list:
-        neighs = np.nonzero(adj_mtx[i])
-        neighs = neighs[0]
+        neighs = nz[i]
         list_of_lists.append(neighs)
 
     ct = 0
@@ -132,9 +133,9 @@ def find_region(adj_mtx, coords, vertex, r):
     v = vertex
 
     # find closest point in level 1
-    row = adj_mtx[v]
-    ix_list = np.nonzero(row)
-    ix_list = ix_list[0]
+    nz = adj_mtx.tolil().rows
+    ix_list = nz[v]
+
     dists = []
     for j in ix_list:
         d = get_dist(coords, v, j)
@@ -151,10 +152,7 @@ def find_region(adj_mtx, coords, vertex, r):
         # get next level: for each in ix_list, get neighbors that are not in <verts>, then add them to the new list
         next_list = []
         for j in ix_list:
-            new_row = adj_mtx[j]
-            new_row = np.nonzero(new_row)
-            new_row = new_row[0]
-
+            new_row = nz[j]
             for k in new_row:
                 if k not in verts:
                     next_list.append(k)
@@ -185,9 +183,8 @@ def traverse_mesh(coords, triangles, center, stride=1):
         v = vertex
 
         # find closest point in level 1
-        row = adj_mtx[v]
-        ix_list = np.nonzero(row)
-        ix_list = ix_list[0]
+        nz = adj_mtx.tolil().rows
+        ix_list = nz[v]
         dists = []
         for j in ix_list:
             d = get_dist(coords, v, j)
@@ -196,7 +193,7 @@ def traverse_mesh(coords, triangles, center, stride=1):
         closest_ix = ix_min
 
         # levels_>=1
-        while len(verts) != len(adj_mtx[0]):    # until all vertices are seen
+        while len(verts) != adj_mtx.shape[0]:    # until all vertices are seen
             # this is the closest vertex of the new level
             # find the ordering of the level
             arr = get_order(adj_mtx, coords, ix_list, closest_ix)
@@ -204,10 +201,7 @@ def traverse_mesh(coords, triangles, center, stride=1):
             # get next level: for each in ix_list, get neighbors that are not in <verts>, then add them to the new list
             next_list = []
             for j in ix_list:
-                new_row = adj_mtx[j]
-                new_row = np.nonzero(new_row)
-                new_row = new_row[0]
-
+                new_row = nz[j]
                 for k in new_row:
                     if k not in verts:
                         next_list.append(k)
@@ -238,9 +232,8 @@ def traverse_mesh(coords, triangles, center, stride=1):
         seen = list()
         seen.append(v)
 
-        row = adj_mtx[v]
-        ix_list = np.nonzero(row)
-        ix_list = ix_list[0]
+        nz = adj_mtx.tolil().rows
+        ix_list = nz[v]
         dists = []
         for j in ix_list:
             d = get_dist(coords, v, j)
@@ -251,7 +244,7 @@ def traverse_mesh(coords, triangles, center, stride=1):
         add_to_verts = False
         ctr = 1
         # levels_>=1
-        while len(seen) != len(adj_mtx[0]):  # until all vertices are seen
+        while len(seen) != adj_mtx.shape[0]:  # until all vertices are seen
             # this is the closest vertex of the new level
             # find the ordering of the level
             arr = get_order(adj_mtx, coords, ix_list, closest_ix)
@@ -267,10 +260,10 @@ def traverse_mesh(coords, triangles, center, stride=1):
             else:
                 add_to_verts = False
             next_list = []
+
             for j in ix_list:
-                new_row = adj_mtx[j]
-                new_row = np.nonzero(new_row)
-                new_row = new_row[0]
+                nz = adj_mtx.tolil().rows
+                new_row = nz[j]
 
                 for k in new_row:
                     if k not in seen:
@@ -318,3 +311,5 @@ def mesh_convolve(filters, adj_mtx, coords):
             arr = npo.vstack((arr, [row]))
             row = []
     return arr
+
+
