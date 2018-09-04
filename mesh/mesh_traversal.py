@@ -6,8 +6,7 @@ import numpy as npo
 import math
 from numpy import linalg as LA
 from numpy import genfromtxt
-
-mesh = om.TriMesh()
+import time
 
 
 # API
@@ -19,6 +18,8 @@ def create_adj_mtx(coords_file, tri_file):
     :param tri_file: a CSV file or python object that includes the triplets of vertices for each triangle of the mesh
     :return: adjacency matrix and the coordinates and triangles parsed as python list objects
     """
+
+    mesh = om.TriMesh()
     if isinstance(coords_file, str) and isinstance(tri_file, str):
         coords = genfromtxt(coords_file, delimiter=',')  # these include the coordinates for each point
         triangles = genfromtxt(tri_file, delimiter=',')  # these include the vertices in each triangle
@@ -203,7 +204,7 @@ def find_region(adj_mtx, coords, vertex, r):
     return verts
 
 
-def traverse_mesh(coords, faces, center, stride=1):
+def traverse_mesh(coords, faces, center, stride=1, verbose=False):
     """
     Calculates the traversal list of all vertices in the mesh
     :param coords: coordinates of the vertices
@@ -213,6 +214,8 @@ def traverse_mesh(coords, faces, center, stride=1):
     :return: list of all vertices in the mesh, starting from the center and in order of traversal
     """
     adj_mtx, coords, faces = create_adj_mtx(coords, faces)
+    verbose_ctr = 1
+    start = time.time()
 
     if stride == 1:
         vertex = center
@@ -237,6 +240,9 @@ def traverse_mesh(coords, faces, center, stride=1):
         while len(verts) != len(adj_mtx[0]):    # until all vertices are seen
             # this is the closest vertex of the new level
             # find the ordering of the level
+            if verbose:
+                print("Iteration {}: {}".format(verbose_ctr, time.time() - start))
+            verbose_ctr = verbose_ctr + 1
             arr = get_order(adj_mtx, coords, ix_list, closest_ix)
             verts = verts + arr
             # get next level: for each in ix_list, get neighbors that are not in <verts>, then add them to the new list
