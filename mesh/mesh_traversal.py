@@ -7,15 +7,17 @@ import math
 from numpy import linalg as LA
 from numpy import genfromtxt
 import time
+from scipy import sparse
 
 
 # API
-def create_adj_mtx(coords_file, tri_file):
+def create_adj_mtx(coords_file, tri_file, is_sparse=True):
     """
     Given a file with the coordinates for each point as well as triplets of ids for each mesh triangle, creates an
     adjacency matrix
     :param coords_file: a CSV file or python object that includes the coordinates for each point in the mesh
     :param tri_file: a CSV file or python object that includes the triplets of vertices for each triangle of the mesh
+    :param is_sparse: whether a sparse implementation is desired
     :return: adjacency matrix and the coordinates and triangles parsed as python list objects
     """
 
@@ -49,7 +51,10 @@ def create_adj_mtx(coords_file, tri_file):
         adj_mtx[p2][p3] = 1
         adj_mtx[p3][p2] = 1
 
-    return adj_mtx, coords, triangles
+    if is_sparse:
+        return sparse.csr_matrix(adj_mtx), coords, triangles
+    else:
+        return adj_mtx, coords, triangles
 
 
 def get_dist(coords, x,y):
@@ -83,10 +88,17 @@ def get_order(adj_mtx, coords, ix_list, closest_ix):
     neigh_list = []
 
     list_of_lists = []
-    for i in ix_list:
-        neighs = np.nonzero(adj_mtx[i])
-        neighs = neighs[0]
-        list_of_lists.append(neighs)
+
+    if sparse.issparse(adj_mtx):
+        nz = adj_mtx.tolil().rows
+        for i in ix_list:
+            neighs = nz[i]
+            list_of_lists.append(neighs)
+    else:
+        for i in ix_list:
+            neighs = np.nonzero(adj_mtx[i])
+            neighs = neighs[0]
+            list_of_lists.append(neighs)
 
     ct = 0
     for i in list_of_lists:
@@ -163,9 +175,14 @@ def find_region(adj_mtx, coords, vertex, r):
     v = vertex
 
     # find closest point in level 1
-    row = adj_mtx[v]
-    ix_list = np.nonzero(row)
-    ix_list = ix_list[0]
+    if sparse.issparse(adj_mtx):
+        nz = adj_mtx.tolil().rows
+        ix_list = nz[v]
+    else:
+        row = adj_mtx[v]
+        ix_list = np.nonzero(row)
+        ix_list = ix_list[0]
+
     dists = []
     for j in ix_list:
         d = get_dist(coords, v, j)
@@ -182,9 +199,12 @@ def find_region(adj_mtx, coords, vertex, r):
         # get next level: for each in ix_list, get neighbors that are not in <verts>, then add them to the new list
         next_list = []
         for j in ix_list:
-            new_row = adj_mtx[j]
-            new_row = np.nonzero(new_row)
-            new_row = new_row[0]
+            if sparse.issparse(adj_mtx):
+                new_row = nz[j]
+            else:
+                new_row = adj_mtx[j]
+                new_row = np.nonzero(new_row)
+                new_row = new_row[0]
 
             for k in new_row:
                 if k not in verts:
@@ -204,16 +224,18 @@ def find_region(adj_mtx, coords, vertex, r):
     return verts
 
 
-def traverse_mesh(coords, faces, center, stride=1, verbose=False):
+def traverse_mesh(coords, faces, center, stride=1, verbose=False, is_sparse=True):
     """
     Calculates the traversal list of all vertices in the mesh
     :param coords: coordinates of the vertices
     :param faces: triplets of vertices for each triangle
     :param center: center vertex
     :param stride: the stride to be covered
+    :param verbose: whether to print time after each iteration
+    :param is_sparse: whether a sparse implementation is desired
     :return: list of all vertices in the mesh, starting from the center and in order of traversal
     """
-    adj_mtx, coords, faces = create_adj_mtx(coords, faces)
+    adj_mtx, coords, faces = create_adj_mtx(coords, faces, is_sparse)
     verbose_ctr = 1
     start = time.time()
 
@@ -226,10 +248,15 @@ def traverse_mesh(coords, faces, center, stride=1, verbose=False):
         v = vertex
 
         # find closest point in level 1
-        row = adj_mtx[v]
-        ix_list = np.nonzero(row)
-        ix_list = ix_list[0]
         dists = []
+        if sparse.issparse(adj_mtx):
+            nz = adj_mtx.tolil().rows
+            ix_list = nz[v]
+        else:
+            row = adj_mtx[v]
+            ix_list = np.nonzero(row)
+            ix_list = ix_list[0]
+
         for j in ix_list:
             d = get_dist(coords, v, j)
             dists.append(d)
@@ -237,7 +264,11 @@ def traverse_mesh(coords, faces, center, stride=1, verbose=False):
         closest_ix = ix_min
 
         # levels_>=1
-        while len(verts) != len(adj_mtx[0]):    # until all vertices are seen
+        if sparse.issparse(adj_mtx):
+            l = adj_mtx.shape[0]
+        else:
+            l = len(adj_mtx[0])
+        while len(verts) != l:    # until all vertices are seen
             # this is the closest vertex of the new level
             # find the ordering of the level
             if verbose:
@@ -248,9 +279,12 @@ def traverse_mesh(coords, faces, center, stride=1, verbose=False):
             # get next level: for each in ix_list, get neighbors that are not in <verts>, then add them to the new list
             next_list = []
             for j in ix_list:
-                new_row = adj_mtx[j]
-                new_row = np.nonzero(new_row)
-                new_row = new_row[0]
+                if sparse.issparse(adj_mtx):
+                    new_row = nz[j]
+                else:
+                    new_row = adj_mtx[j]
+                    new_row = np.nonzero(new_row)
+                    new_row = new_row[0]
 
                 for k in new_row:
                     if k not in verts:
@@ -282,9 +316,14 @@ def traverse_mesh(coords, faces, center, stride=1, verbose=False):
         seen = list()
         seen.append(v)
 
-        row = adj_mtx[v]
-        ix_list = np.nonzero(row)
-        ix_list = ix_list[0]
+        if sparse.issparse(adj_mtx):
+            nz = adj_mtx.tolil().rows
+            ix_list = nz[v]
+        else:
+            row = adj_mtx[v]
+            ix_list = np.nonzero(row)
+            ix_list = ix_list[0]
+
         dists = []
         for j in ix_list:
             d = get_dist(coords, v, j)
@@ -295,7 +334,11 @@ def traverse_mesh(coords, faces, center, stride=1, verbose=False):
         add_to_verts = False
         ctr = 1
         # levels_>=1
-        while len(seen) != len(adj_mtx[0]):  # until all vertices are seen
+        if sparse.issparse(adj_mtx):
+            l = adj_mtx.shape[0]
+        else:
+            l = len(adj_mtx[0])
+        while len(seen) != l:  # until all vertices are seen
             # this is the closest vertex of the new level
             # find the ordering of the level
             arr = get_order(adj_mtx, coords, ix_list, closest_ix)
@@ -312,9 +355,13 @@ def traverse_mesh(coords, faces, center, stride=1, verbose=False):
                 add_to_verts = False
             next_list = []
             for j in ix_list:
-                new_row = adj_mtx[j]
-                new_row = np.nonzero(new_row)
-                new_row = new_row[0]
+                if sparse.issparse(adj_mtx):
+                    nz = adj_mtx.tolil().rows
+                    new_row = nz[j]
+                else:
+                    new_row = adj_mtx[j]
+                    new_row = np.nonzero(new_row)
+                    new_row = new_row[0]
 
                 for k in new_row:
                     if k not in seen:
