@@ -1,15 +1,19 @@
+"""
+mesh_traversal_client.py
+This client script creates an adjacency matrix from existing data, and given the appropriate coordinates and triangles
+for a icosahedron mesh, traverses it and outputs the traversal order.
+"""
+_author_ = "Semih Cantürk"
+_credits_ = "Cassiano Becker"
+
 import os
 os.environ['ETS_TOOLKIT'] = 'qt4'
 import openmesh as om
 import autograd.numpy as np
 import numpy as npo
-import mesh_traversal
-import mesh_traversal_sparse
+from mesh import mesh_traversal, mesh_traversal_sparse
 import math
 import time
-
-
-"the code you want to test stays here"
 
 # neighbor_count = adj_mtx.sum(axis=0)    # vertices with ids 0:11 have 5 neighbors (causing 5-bug), all others 6
 # neighs_0 = npo.nonzero(adj_mtx[0])
@@ -65,7 +69,7 @@ flist = []
 for i in faces:
     flist.append(mesh.add_face(vlist[i[0]], vlist[i[1]], vlist[i[2]]))
 
-om.write_mesh('icosahedron.off', mesh)
+om.write_mesh('./data/icosahedron.off', mesh)
 
 # Example with non-sparse matrix
 start = time.time()

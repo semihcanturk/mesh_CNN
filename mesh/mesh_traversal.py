@@ -6,13 +6,19 @@ import numpy as npo
 import math
 from numpy import linalg as LA
 from numpy import genfromtxt
-from scipy import sparse
 
 mesh = om.TriMesh()
 
 
 # API
 def create_adj_mtx(coords_file, tri_file):
+    """
+    Given a file with the coordinates for each point as well as triplets of ids for each mesh triangle, creates an
+    adjacency matrix
+    :param coords_file: a CSV file or python object that includes the coordinates for each point in the mesh
+    :param tri_file: a CSV file or python object that includes the triplets of vertices for each triangle of the mesh
+    :return: adjacency matrix and the coordinates and triangles parsed as python list objects
+    """
     if isinstance(coords_file, str) and isinstance(tri_file, str):
         coords = genfromtxt(coords_file, delimiter=',')  # these include the coordinates for each point
         triangles = genfromtxt(tri_file, delimiter=',')  # these include the vertices in each triangle
@@ -42,17 +48,31 @@ def create_adj_mtx(coords_file, tri_file):
         adj_mtx[p2][p3] = 1
         adj_mtx[p3][p2] = 1
 
-    sparse_adj = sparse.csr_matrix(adj_mtx)
-    return sparse_adj, coords, triangles
+    return adj_mtx, coords, triangles
 
 
-def get_dist(coords, v,j):
-    coords1 = coords[v]
-    coords2 = coords[j]
+def get_dist(coords, x,y):
+    """
+    Calculates the euclidean distance between two vertices in the mesh
+    :param coords:
+    :param x: vertex 1
+    :param y: vertex 2
+    :return: euclidean distance between x and y
+    """
+    coords1 = coords[x]
+    coords2 = coords[y]
     return math.sqrt((coords1[0]-coords2[0])**2 + (coords1[1]-coords2[1])**2 + (coords1[2]-coords2[2])**2)
 
 
 def get_order(adj_mtx, coords, ix_list, closest_ix):
+    """
+    Given a list of vertices (at a certain depth away from the center), calculates traversal order
+    :param adj_mtx: adjacency matrix of the mesh
+    :param coords: list of coordinates for each vertex
+    :param ix_list: list of vertices
+    :param closest_ix: the starting vertex
+    :return: ordered list of vertices
+    """
     arr = []
     seen = []
     arr.append(closest_ix)
@@ -62,10 +82,9 @@ def get_order(adj_mtx, coords, ix_list, closest_ix):
     neigh_list = []
 
     list_of_lists = []
-    nz = adj_mtx.tolil().rows
-
     for i in ix_list:
-        neighs = nz[i]
+        neighs = np.nonzero(adj_mtx[i])
+        neighs = neighs[0]
         list_of_lists.append(neighs)
 
     ct = 0
@@ -126,6 +145,16 @@ def get_order(adj_mtx, coords, ix_list, closest_ix):
 
 
 def find_region(adj_mtx, coords, vertex, r):
+    # TODO: Account for values - what are the values that we obtain from each vertex?
+    # We should return the values from the vertices, not the vertices themselves in the final implementation.
+    """
+    Given a center and radius, calculates the traversal list of all vertices in a given depth radius
+    :param adj_mtx: adjacency matrix of the mesh
+    :param coords: coordinates of the vertices
+    :param vertex: center vertex
+    :param r: radius of region in terms of depth
+    :return: traversal list of the vertices in the region
+    """
     verts = list()
 
     # level_0
@@ -133,9 +162,9 @@ def find_region(adj_mtx, coords, vertex, r):
     v = vertex
 
     # find closest point in level 1
-    nz = adj_mtx.tolil().rows
-    ix_list = nz[v]
-
+    row = adj_mtx[v]
+    ix_list = np.nonzero(row)
+    ix_list = ix_list[0]
     dists = []
     for j in ix_list:
         d = get_dist(coords, v, j)
@@ -152,7 +181,10 @@ def find_region(adj_mtx, coords, vertex, r):
         # get next level: for each in ix_list, get neighbors that are not in <verts>, then add them to the new list
         next_list = []
         for j in ix_list:
-            new_row = nz[j]
+            new_row = adj_mtx[j]
+            new_row = np.nonzero(new_row)
+            new_row = new_row[0]
+
             for k in new_row:
                 if k not in verts:
                     next_list.append(k)
@@ -164,15 +196,23 @@ def find_region(adj_mtx, coords, vertex, r):
         line_dists = []
         for j in next_list:
             c3 = coords[j]
-            line_dist = LA.norm(np.cross(c2 - c1, c1 - c3)) / LA.norm(c2 - c1)  # not exactly sure of this
+            line_dist = LA.norm(np.cross(c2 - c1, c1 - c3)) / LA.norm(c2 - c1)  # calculate distance to line
             line_dists.append(line_dist)
         ix_list = next_list
         closest_ix = next_list[line_dists.index(min(line_dists))]
     return verts
 
 
-def traverse_mesh(coords, triangles, center, stride=1):
-    adj_mtx, coords, triangles = create_adj_mtx(coords, triangles)
+def traverse_mesh(coords, faces, center, stride=1):
+    """
+    Calculates the traversal list of all vertices in the mesh
+    :param coords: coordinates of the vertices
+    :param faces: triplets of vertices for each triangle
+    :param center: center vertex
+    :param stride: the stride to be covered
+    :return: list of all vertices in the mesh, starting from the center and in order of traversal
+    """
+    adj_mtx, coords, faces = create_adj_mtx(coords, faces)
 
     if stride == 1:
         vertex = center
@@ -183,8 +223,9 @@ def traverse_mesh(coords, triangles, center, stride=1):
         v = vertex
 
         # find closest point in level 1
-        nz = adj_mtx.tolil().rows
-        ix_list = nz[v]
+        row = adj_mtx[v]
+        ix_list = np.nonzero(row)
+        ix_list = ix_list[0]
         dists = []
         for j in ix_list:
             d = get_dist(coords, v, j)
@@ -193,7 +234,7 @@ def traverse_mesh(coords, triangles, center, stride=1):
         closest_ix = ix_min
 
         # levels_>=1
-        while len(verts) != adj_mtx.shape[0]:    # until all vertices are seen
+        while len(verts) != len(adj_mtx[0]):    # until all vertices are seen
             # this is the closest vertex of the new level
             # find the ordering of the level
             arr = get_order(adj_mtx, coords, ix_list, closest_ix)
@@ -201,7 +242,10 @@ def traverse_mesh(coords, triangles, center, stride=1):
             # get next level: for each in ix_list, get neighbors that are not in <verts>, then add them to the new list
             next_list = []
             for j in ix_list:
-                new_row = nz[j]
+                new_row = adj_mtx[j]
+                new_row = np.nonzero(new_row)
+                new_row = new_row[0]
+
                 for k in new_row:
                     if k not in verts:
                         next_list.append(k)
@@ -232,8 +276,9 @@ def traverse_mesh(coords, triangles, center, stride=1):
         seen = list()
         seen.append(v)
 
-        nz = adj_mtx.tolil().rows
-        ix_list = nz[v]
+        row = adj_mtx[v]
+        ix_list = np.nonzero(row)
+        ix_list = ix_list[0]
         dists = []
         for j in ix_list:
             d = get_dist(coords, v, j)
@@ -244,7 +289,7 @@ def traverse_mesh(coords, triangles, center, stride=1):
         add_to_verts = False
         ctr = 1
         # levels_>=1
-        while len(seen) != adj_mtx.shape[0]:  # until all vertices are seen
+        while len(seen) != len(adj_mtx[0]):  # until all vertices are seen
             # this is the closest vertex of the new level
             # find the ordering of the level
             arr = get_order(adj_mtx, coords, ix_list, closest_ix)
@@ -260,10 +305,10 @@ def traverse_mesh(coords, triangles, center, stride=1):
             else:
                 add_to_verts = False
             next_list = []
-
             for j in ix_list:
-                nz = adj_mtx.tolil().rows
-                new_row = nz[j]
+                new_row = adj_mtx[j]
+                new_row = np.nonzero(new_row)
+                new_row = new_row[0]
 
                 for k in new_row:
                     if k not in seen:
@@ -284,20 +329,38 @@ def traverse_mesh(coords, triangles, center, stride=1):
         return verts
 
 
-def mesh_strider(adj_mtx, coords, center, radius, max_radius = 3):
-    # max_radius: the radius covering the whole mesh
+def mesh_strider(adj_mtx, coords, faces, center, radius, stride):
+    # TODO: Account for edge cases where we try to get a patch from an edge vertex, which shouldn't be possible.
+    # Instead, traversal should stop when the edge of the patch reaches the edge of the mesh.
+    # TODO: Account for values - what are the values that we obtain from each vertex?
+    """
+    Returns a list of patches after traversing and obtaining the patches for each mesh
+    :param adj_mtx: adjacency matrix of the mesh
+    :param coords:  coordinates of each vertes
+    :param faces:   the vertices in each triangle of the mesh
+    :param center:  center vertex
+    :param radius:  radius for the patches
+    :param stride:  stride in each traversal step
+    :return:    array of patches in traversal order, in form of list of lists
+    """
     patches = []
-    vertices = find_region(adj_mtx, coords, center, max_radius-1)   # list of vertices, ordered
+    vertices = traverse_mesh(coords, faces, center, stride)   # list of vertices, ordered
     for v in vertices:                             # -1 because edges cant be centers
         patches.append(find_region(adj_mtx, coords, v, radius))     # so no patches with them as centers
     return patches
 
 
-def mesh_convolve(filters, adj_mtx, coords):
-    center = 93 # arbitrary
-    r = 1   # arbitrary
-    max_radius = 20 # this should be derived from the mesh itself
-    strided_mesh = mesh_strider(adj_mtx, coords, center, r, max_radius=max_radius)
+def mesh_convolve(filters, adj_mtx, coords, faces, center, r, stride):
+    """
+    Strides the mesh and applies a convolution to the patches
+    :param filters: list of filters
+    :param adj_mtx: adjacency matrix
+    :param coords: coordinates of each vertex
+    :return: result of the convolution operation
+    """
+    #center = 93 # arbitrary
+    #r = 1   # arbitrary
+    strided_mesh = mesh_strider(adj_mtx, coords, faces, center, r, stride)
     arr = []
     for f in filters:
         row = []
@@ -311,5 +374,3 @@ def mesh_convolve(filters, adj_mtx, coords):
             arr = npo.vstack((arr, [row]))
             row = []
     return arr
-
-
