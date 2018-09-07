@@ -11,7 +11,7 @@ _author_ = "Semih Cantürk"
 _credits_ = "Cassiano Becker"
 
 # TODO: Verify that this is working correctly after implementation changes in mesh_traversal.py
-adj_mtx, coords, faces = mesh_traversal.create_adj_mtx('./data/data0.csv', './data/data1.csv')
+adj_mtx, coords, faces = mesh_traversal.create_adj_mtx('../data/data0.csv', '../data/data1.csv')
 
 traversal_list = mesh_traversal.traverse_mesh(coords, faces, 93, verbose=True, is_sparse=True)
 print(len(traversal_list))

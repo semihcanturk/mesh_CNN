@@ -103,14 +103,15 @@ def get_order(adj_mtx, coords, ix_list, closest_ix):
     ct = 0
     for i in list_of_lists:
         if closest_ix in i:
-            neigh_list.append(ix_list[ct])
+            if ix_list[ct] not in seen:
+                neigh_list.append(ix_list[ct])
         ct += 1
 
     if len(arr) == len(ix_list):
         return arr
 
     while len(arr) != len(ix_list):
-        if len(neigh_list) == 2:
+        if len(neigh_list) >= 2:
             v1 = neigh_list[0]
             v2 = neigh_list[1]
             x1 = coords[v1]
@@ -268,9 +269,11 @@ def traverse_mesh(coords, faces, center, stride=1, verbose=False, is_sparse=True
             l = adj_mtx.shape[0]
         else:
             l = len(adj_mtx[0])
-        while len(verts) != l:    # until all vertices are seen
+        while len(verts) < 0.999 * l:    # until all vertices are seen
             # this is the closest vertex of the new level
             # find the ordering of the level
+            if verbose_ctr == 132:
+                print("Here we are!")
             if verbose:
                 print("Iteration {}: {}".format(verbose_ctr, time.time() - start))
             verbose_ctr = verbose_ctr + 1
