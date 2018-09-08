@@ -1,6 +1,9 @@
 # Conv_CNN
 
-
+Conv_CNN intends to be, in its full form, a software library to apply the sequential matrix and mathematical
+operations that would take place within a convolutional layer of a Convolutional Neural Network (CNN). This will in turn
+enable the use of the spatial relationships in surface points in the brain where fMRI data is retrieved in Human 
+Connectome Project (HPC) experiments through CNNs.
 
 ### cnn
 Temporary directory for fully working CNN implementations.
@@ -28,6 +31,8 @@ Includes all data used or sample data to experiment with.
 **icosahedron.off:** Example mesh for traversal testing.
 
 ### examples
+Example files to test functionality.
+
 **get_patch_client.py:** Basic test for mesh_traversal.find_region() functionality.
 
 **mesh_convolve_client.py:** Basic tests for mesh_traversal.traverse_mesh() and convolve() functionality.
@@ -39,9 +44,14 @@ Includes all data used or sample data to experiment with.
 **mesh_overlay.py:** Basic script to set an activation overlay over a pysurfer mesh.
 
 ### mesh
+This directory holds the main mesh traversal API
+
 **load_icosahedron.py:** Script to create a icosahedron mesh out of a list of vertex coordinates and a list of faces.
 
 **mesh_traversal.py:** Traversal API for brain mesh.
 
 ### mesh_creation
-**array_extraction.py:** Script to transform brain surface data to arrays that contain vertex coordinates and triplets for mesh faces.
+Includes a script to create a 3D mesh from a surface file.
+
+**array_extraction.py:** Script to transform brain surface data to arrays that contain vertex coordinates and triplets 
+for mesh faces.
