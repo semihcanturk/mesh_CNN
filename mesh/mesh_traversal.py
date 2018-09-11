@@ -70,7 +70,7 @@ def get_dist(coords, x,y):
     return math.sqrt((coords1[0]-coords2[0])**2 + (coords1[1]-coords2[1])**2 + (coords1[2]-coords2[2])**2)
 
 
-def get_order(adj_mtx, coords, ix_list, closest_ix):
+def get_order(adj_mtx, coords, ix_list, closest_ix, verts):
     """
     Given a list of vertices (at a certain depth away from the center), calculates traversal order
     :param adj_mtx: adjacency matrix of the mesh
@@ -80,9 +80,9 @@ def get_order(adj_mtx, coords, ix_list, closest_ix):
     :return: ordered list of vertices
     """
     arr = []
-    seen = []
+    seen = set(verts)
     arr.append(closest_ix)
-    seen.append(closest_ix)
+    seen.add(closest_ix)
     v = closest_ix
     # find the neighbor
     neigh_list = []
@@ -111,7 +111,7 @@ def get_order(adj_mtx, coords, ix_list, closest_ix):
         return arr
 
     while len(arr) != len(ix_list):
-        if len(neigh_list) >= 2:
+        if len(neigh_list) == 2:
             v1 = neigh_list[0]
             v2 = neigh_list[1]
             x1 = coords[v1]
@@ -119,39 +119,39 @@ def get_order(adj_mtx, coords, ix_list, closest_ix):
             if x1[0] <= x2[0]:
                 v = v1
                 arr.append(v)
-                seen.append(v)
+                seen.add(v)
 
                 neigh_list = []
                 ct = 0
                 for i in list_of_lists:
                     if v in i and ix_list[ct] not in seen:
                         neigh_list.append(ix_list[ct])
-                        seen.append(ix_list[ct])
+                        seen.add(ix_list[ct])
                     ct += 1
             else:
                 v = v2
                 arr.append(v)
-                seen.append(v)
+                seen.add(v)
 
                 neigh_list = []
                 ct = 0
                 for i in list_of_lists:
                     if v in i and ix_list[ct] not in seen:
                         neigh_list.append(ix_list[ct])
-                        seen.append(ix_list[ct])
+                        seen.add(ix_list[ct])
                     ct += 1
 
         if len(neigh_list) == 1:
             v = neigh_list[0]
             arr.append(v)
-            seen.append(v)
+            seen.add(v)
 
             neigh_list = []
             ct = 0
             for i in list_of_lists:
                 if v in i and ix_list[ct] not in seen:
                     neigh_list.append(ix_list[ct])
-                    seen.append(ix_list[ct])
+                    seen.add(ix_list[ct])
                 ct += 1
 
         if len(neigh_list) == 0:
@@ -269,7 +269,7 @@ def traverse_mesh(coords, faces, center, stride=1, verbose=False, is_sparse=True
             l = adj_mtx.shape[0]
         else:
             l = len(adj_mtx[0])
-        while len(verts) < 0.999 * l:    # until all vertices are seen
+        while len(verts) != l:    # until all vertices are seen #TODO: Fix inequality bug
             # this is the closest vertex of the new level
             # find the ordering of the level
             if verbose_ctr == 132:
@@ -277,7 +277,7 @@ def traverse_mesh(coords, faces, center, stride=1, verbose=False, is_sparse=True
             if verbose:
                 print("Iteration {}: {}".format(verbose_ctr, time.time() - start))
             verbose_ctr = verbose_ctr + 1
-            arr = get_order(adj_mtx, coords, ix_list, closest_ix)
+            arr = get_order(adj_mtx, coords, ix_list, closest_ix, verts)
             verts = verts + arr
             # get next level: for each in ix_list, get neighbors that are not in <verts>, then add them to the new list
             next_list = []
@@ -344,7 +344,7 @@ def traverse_mesh(coords, faces, center, stride=1, verbose=False, is_sparse=True
         while len(seen) != l:  # until all vertices are seen
             # this is the closest vertex of the new level
             # find the ordering of the level
-            arr = get_order(adj_mtx, coords, ix_list, closest_ix)
+            arr = get_order(adj_mtx, coords, ix_list, closest_ix, seen)
             seen = seen + arr
 
             if add_to_verts:    # add only every other level to the traversal list
