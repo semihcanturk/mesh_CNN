@@ -111,8 +111,7 @@ def get_order(adj_mtx, coords, ix_list, closest_ix, verts):
         return arr
 
     while len(arr) != len(ix_list):
-        if len(neigh_list) == 2:
-        #if len(neigh_list) >= 2:
+        if len(neigh_list) >= 2:
             v1 = neigh_list[0]
             v2 = neigh_list[1]
             x1 = coords[v1]
@@ -203,8 +202,8 @@ def traverse_mesh(coords, faces, center, stride=1, verbose=False, is_sparse=True
             l = adj_mtx.shape[0]
         else:
             l = len(adj_mtx[0])
-        while len(verts) != l:    # until all vertices are seen #TODO: Fix inequality bug
-        #while len(verts) <= 0.9985 * l:
+        # until all vertices are seen #TODO: Fix inequality bug
+        while len(verts) <= 0.9985 * l:
             # this is the closest vertex of the new level
             # find the ordering of the level
             if verbose_ctr == 130:
@@ -217,7 +216,6 @@ def traverse_mesh(coords, faces, center, stride=1, verbose=False, is_sparse=True
             for i in arr:
                 if i not in verts:
                     verts.append(i)
-            #verts = verts + arr
             # get next level: for each in ix_list, get neighbors that are not in <verts>, then add them to the new list
             next_list = []
             for j in ix_list:
