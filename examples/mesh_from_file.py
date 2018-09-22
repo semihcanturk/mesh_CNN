@@ -13,7 +13,7 @@ import os
 import nibabel as nib
 import openmesh as om
 
-file_gii = '../data/HCP/convdata/100206.L.very_inflated.32k_fs_LR.surf.gii'
+file_gii = '../data/HCP/convdata/604537.L.very_inflated.32k_fs_LR.surf.gii'
 file_gii = os.path.join(file_gii)
 img = nib.load(file_gii)
 

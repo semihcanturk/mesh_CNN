@@ -36,6 +36,7 @@ def create_adj_mtx(coords_file, tri_file, is_sparse=True):
     faces = []
     for i in triangles:
         faces.append(mesh.add_face(verts[i[0]], verts[i[1]], verts[i[2]]))
+
     adj_mtx = np.zeros(shape=(coords.shape[0], coords.shape[0]))
     for i in triangles:
         p1 = i[0]
@@ -204,12 +205,9 @@ def traverse_mesh(coords, faces, center, stride=1, verbose=False, is_sparse=True
         else:
             l = len(adj_mtx[0])
         while len(verts) != l:    # until all vertices are seen #TODO: Fix inequality bug
-        #while len(verts) <= 0.9985 * l:
+        # while len(verts) <= 0.99 * l:
             # this is the closest vertex of the new level
             # find the ordering of the level
-            if verbose_ctr == 130:
-                print("Here we are!")
-                print(len(verts))
             if verbose:
                 print("Iteration {}: {}".format(verbose_ctr, time.time() - start))
             verbose_ctr = verbose_ctr + 1
@@ -217,7 +215,6 @@ def traverse_mesh(coords, faces, center, stride=1, verbose=False, is_sparse=True
             for i in arr:
                 if i not in verts:
                     verts.append(i)
-            #verts = verts + arr
             # get next level: for each in ix_list, get neighbors that are not in <verts>, then add them to the new list
             next_list = []
             for j in ix_list:
@@ -324,7 +321,7 @@ def traverse_mesh(coords, faces, center, stride=1, verbose=False, is_sparse=True
         return verts
 
 
-def find_region(adj_mtx, coords, vertex, r):
+def find_region(adj_mtx, mesh_vals, coords, vertex, r):
     # TODO: Account for values - what are the values that we obtain from each vertex?
     # We should return the values from the vertices, not the vertices themselves in the final implementation.
     """
@@ -361,7 +358,7 @@ def find_region(adj_mtx, coords, vertex, r):
     for i in range(1, r + 1):
         # this is the closest vertex of the new level
         # find the ordering of the level
-        arr = get_order(adj_mtx, coords, ix_list, closest_ix)
+        arr = get_order(adj_mtx, coords, ix_list, closest_ix, verts)
         verts = verts + arr
         # get next level: for each in ix_list, get neighbors that are not in <verts>, then add them to the new list
         next_list = []
@@ -388,10 +385,14 @@ def find_region(adj_mtx, coords, vertex, r):
             line_dists.append(line_dist)
         ix_list = next_list
         closest_ix = next_list[line_dists.index(min(line_dists))]
-    return verts
+
+    vals = list()
+    for i in verts:
+        vals.append(mesh_vals[i])
+    return vals
 
 
-def mesh_strider(adj_mtx, coords, faces, center, radius, stride):
+def mesh_strider(adj_mtx, mesh_vals, coords, faces, center, radius, stride):
     # TODO: Account for edge cases where we try to get a patch from an edge vertex, which shouldn't be possible.
     # Instead, traversal should stop when the edge of the patch reaches the edge of the mesh.
     # TODO: Account for values - what are the values that we obtain from each vertex?
@@ -408,11 +409,11 @@ def mesh_strider(adj_mtx, coords, faces, center, radius, stride):
     patches = []
     vertices = traverse_mesh(coords, faces, center, stride)   # list of vertices, ordered
     for v in vertices:                             # -1 because edges cant be centers
-        patches.append(find_region(adj_mtx, coords, v, radius))     # so no patches with them as centers
+        patches.append(find_region(adj_mtx, mesh_vals, coords, v, radius))     # so no patches with them as centers
     return patches
 
 
-def mesh_convolve(filters, adj_mtx, coords, faces, center, r, stride):
+def mesh_convolve(filters, adj_mtx, mesh_vals, coords, faces, center, r, stride):
     """
     Strides the mesh and applies a convolution to the patches
     :param filters: list of filters
@@ -420,15 +421,21 @@ def mesh_convolve(filters, adj_mtx, coords, faces, center, r, stride):
     :param coords: coordinates of each vertex
     :return: result of the convolution operation
     """
-    #center = 93 # arbitrary
-    #r = 1   # arbitrary
-    strided_mesh = mesh_strider(adj_mtx, coords, faces, center, r, stride)
+
+    strided_mesh = mesh_strider(adj_mtx, mesh_vals, coords, faces, center, r, stride)
     arr = []
     for f in filters:
         row = []
         for p in strided_mesh:
-            temp = np.einsum('i,i->', f, p)
-            row.append(temp)
+            p = p / LA.norm(p)
+            try:
+                # temp = np.einsum('i,i->', f, p)
+                temp = npo.dot(f, p)
+                row.append(temp)
+            except:
+                # temp = np.einsum('i,i->', f[:len(p)], p)
+                temp = npo.dot(f[:len(p)], p)
+                row.append(temp)
         if len(arr) == 0:
             arr = npo.array([row])
             row = []
