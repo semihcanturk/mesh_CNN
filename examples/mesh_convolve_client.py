@@ -7,7 +7,7 @@ from scipy import stats
 from numpy import linalg as LA
 
 """
-traversal_debug.py
+conv_debug.py
 This client script creates an adjacency matrix from existing data, strides the mesh and convolves the result
 with arbitrary data. These arbitrary filters (as well as the convolution values which are vertex IDs for now)
 will be replaced in later implementations.
@@ -76,7 +76,8 @@ print(mesh_vals[150])
 #large_region = mesh_traversal_debug.find_region(adj_mtx, coords, 93, 2)
 
 #mesh_convolve(filters, adj_mtx, coords, faces, center, r, stride):
-conv = mesh_traversal_debug.mesh_convolve(filters, adj_mtx, mesh_vals, coords, faces, 93, 2, 1)  # filters, adj_mtx, coords, faces, center, r, stride
+conv = mesh_traversal_debug.mesh_convolve(filters, adj_mtx, mesh_vals, coords, faces, 93, 2,
+                                          1)  # filters, adj_mtx, coords, faces, center, r, stride
 print("Convolution Result: ")
 print(conv)
 pickle.dump(conv, open("conv_result.pickle", "wb"))

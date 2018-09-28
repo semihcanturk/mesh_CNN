@@ -8,12 +8,14 @@ import autograd.numpy as np
 import autograd.numpy.random as npr
 import autograd.scipy.signal
 from autograd import grad
+from mesh import mesh_traversal_debug, generate_sphere_data, generate_icos_data, load_sphere
 import mnist
 
-convolve = autograd.scipy.signal.convolve
-
-A_def = None
-B_def = None
+center = 0
+r = 1
+stride = 1
+level = 2
+order = None
 
 
 class WeightsParser(object):
@@ -78,9 +80,24 @@ class conv_layer(object):
         # Input dimensions:  [data, color_in, y, x]
         # Params dimensions: [color_in, color_out, y, x]
         # Output dimensions: [data, color_out, y, x]
-        params = self.parser.get(param_vector, 'params')
+        params = self.parser.get(param_vector, 'params')    # filters
         biases = self.parser.get(param_vector, 'biases')
-        conv = convolve(inputs, params, axes=([2, 3], [2, 3]), dot_axes = ([1], [0]), mode='valid')
+        biases = biases.reshape(biases.shape[0], biases.shape[1], 1)
+        if inputs.shape[2] == 162:
+            adj_mtx = m2
+            coords = np.array(v2)
+            faces = f2
+        elif inputs.shape[2] == 42:
+            adj_mtx = m1
+            coords = np.array(v1)
+            faces = f1
+        elif inputs.shape[2] ==12:
+            adj_mtx = m0
+            coords = np.array(v0)
+            faces = f0
+        conv = mesh_traversal_debug.mesh_convolve(params, adj_mtx, inputs, coords, faces, center, r, stride)
+        #conv = convolve(inputs, params, axes=([2, 3], [2, 3]), dot_axes = ([1], [0]), mode='valid')
+        #conv.reshape(1, 6, 162, 1)
         return conv + biases
 
     def build_weights_dict(self, input_shape):
@@ -94,7 +111,7 @@ class conv_layer(object):
         return self.parser.N, output_shape
 
     def conv_output_shape(self, A, B):
-        return (A[0] - B[0] + 1, A[1] - B[1] + 1)
+        return A[0],
 
 class maxpool_layer(object):
     def __init__(self, pool_shape):
@@ -103,20 +120,49 @@ class maxpool_layer(object):
     def build_weights_dict(self, input_shape):
         # input_shape dimensions: [color, y, x]
         output_shape = list(input_shape)
-        for i in [0, 1]:
+        for i in [0]:
             assert input_shape[i + 1] % self.pool_shape[i] == 0, \
                 "maxpool shape should tile input exactly"
-            output_shape[i + 1] = input_shape[i + 1] / self.pool_shape[i]
+            output_shape[i + 1] = int((input_shape[i + 1] + 6) / (self.pool_shape[i]-2))
         return 0, output_shape
 
     def forward_pass(self, inputs, param_vector):
+        if inputs.shape[2] == 162:
+            adj_mtx = m2
+            coords = np.array(v2)
+            order = o2
+        elif inputs.shape[2] == 42:
+            adj_mtx = m1
+            coords = np.array(v1)
+            order = o1
+        elif inputs.shape[2] ==12:
+            adj_mtx = m0
+            coords = np.array(v0)
+            order = o0
         new_shape = inputs.shape[:2]
-        for i in [0, 1]:
+        for i in [0]:
             pool_width = self.pool_shape[i]
             img_width = inputs.shape[i + 2]
-            new_shape += (img_width // pool_width, pool_width)
-        result = inputs.reshape(new_shape)
-        return np.max(np.max(result, axis=3), axis=4)
+            new_dim = int((img_width + 6) / (pool_width-2))
+            new_shape += (new_dim,)
+        result = None
+        for i in range(new_dim):
+            n = mesh_traversal_debug.get_neighs(adj_mtx, coords, i, 1)
+            nlist = None
+            for neighbor in n:
+                x = inputs[:, :, order.index(neighbor)]
+                if nlist is None:
+                    nlist = np.expand_dims(x, axis=2)
+                else:
+                    x = np.expand_dims(x, axis=2)
+                    nlist = np.concatenate((nlist, x), axis=2)
+            subresult = np.mean(nlist, axis=2)
+            if result is None:
+                result = np.expand_dims(subresult, axis=2)
+            else:
+                subresult = np.expand_dims(subresult, axis=2)
+                result = np.concatenate((result, subresult), axis=2)
+        return result
 
 class full_layer(object):
     def __init__(self, size):
@@ -149,14 +195,14 @@ class softmax_layer(full_layer):
 if __name__ == '__main__':
     # Network parameters
     L2_reg = 1.0
-    input_shape = (1, 28, 28)
-    layer_specs = [conv_layer((5, 5), 6),
-                   maxpool_layer((2, 2)),
-                   conv_layer((5, 5), 16),
-                   maxpool_layer((2, 2)),
+    input_shape = (1, 162,)
+    layer_specs = [conv_layer((7,), 6),
+                   maxpool_layer((6,)),
+                   conv_layer((7,), 16),
+                   maxpool_layer((6,)),
                    tanh_layer(120),
                    tanh_layer(84),
-                   softmax_layer(10)]
+                   softmax_layer(2)]
 
     # Training parameters
     param_scale = 0.1
@@ -165,22 +211,36 @@ if __name__ == '__main__':
     batch_size = 256
     num_epochs = 50
 
-    # Load and process MNIST data
+    # Load and process mesh data
     print("Loading training data...")
-    add_color_channel = lambda x : x.reshape((x.shape[0], 1, x.shape[1], x.shape[2]))
-    one_hot = lambda x, K : np.array(x[:,None] == np.arange(K)[None, :], dtype=int)
-    #train_images, train_labels, test_images, test_labels = data_mnist.mnist()
+    one_hot = lambda x, K: np.array(x[:,None] == np.arange(K)[None, :], dtype=int)
 
-    train_images = np.random.randint(0,99, size=(1000,28,28), dtype=np.int64)
-    train_labels = np.random.randint(0,1, size=(1000), dtype=np.int64)
+    v0, f0, m0 = load_sphere.load(0)
+    v1, f1, m1 = load_sphere.load(1)
+    v2, f2, m2 = load_sphere.load(2)
 
-    test_images = np.random.randint(0,99, size=(1000,28,28), dtype=np.int64)
-    test_labels = np.random.randint(0,1, size=(1000), dtype=np.int64)
+    matrices = [m0, m1, m2]
 
-    train_images = add_color_channel(train_images) / 255.0
-    test_images  = add_color_channel(test_images)  / 255.0
-    train_labels = one_hot(train_labels, 10)
-    test_labels = one_hot(test_labels, 10)
+    train_images, train_labels, test_images, test_labels, \
+    adj_mtx, mesh_vals, coords, faces = generate_sphere_data.generate()
+    coords = np.array(coords)
+    train_images = np.expand_dims(train_images, axis=1)
+    test_images = np.expand_dims(test_images, axis=1)
+
+    order = mesh_traversal_debug.traverse_mesh(coords, faces, center, stride)  # list of vertices, ordered
+    rem = set(range(mesh_vals.shape[0])).difference(set(order))
+    order = order + list(rem)
+
+    o2 = order
+    o1 = mesh_traversal_debug.traverse_mesh(np.array(v1), f1, center, stride)
+    rem1 = set(range(42)).difference(set(o1))
+    o1 = o1 + list(rem1)
+    o0 = mesh_traversal_debug.traverse_mesh(np.array(v0), f0, center, stride)
+    rem0 = set(range(12)).difference(set(o0))
+    o0 = o0 + list(rem0)
+
+    train_labels = one_hot(train_labels, 2)
+    test_labels = one_hot(test_labels, 2)
     N_data = train_images.shape[0]
 
     # Make neural net functions

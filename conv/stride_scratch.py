@@ -9,7 +9,7 @@ from autograd.extend import primitive, defvjp
 from numpy.lib.stride_tricks import as_strided
 from future.utils import iteritems
 import mnist
-import hips_convnet
+from conv import hips_convnet
 import pickle
 
 convolve = autograd.scipy.signal.convolve

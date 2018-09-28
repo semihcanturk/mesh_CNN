@@ -321,7 +321,7 @@ def traverse_mesh(coords, faces, center, stride=1, verbose=False, is_sparse=True
         return verts
 
 
-def find_region(adj_mtx, mesh_vals, coords, vertex, r):
+def find_region(adj_mtx, mesh_vals, coords, vertex, r, neighs=False):
     # TODO: Account for values - what are the values that we obtain from each vertex?
     # We should return the values from the vertices, not the vertices themselves in the final implementation.
     """
@@ -389,7 +389,11 @@ def find_region(adj_mtx, mesh_vals, coords, vertex, r):
     vals = list()
     for i in verts:
         vals.append(mesh_vals[i])
-    return vals
+
+    if neighs:
+        return vals, verts
+    else:
+        return vals
 
 
 def mesh_strider(adj_mtx, mesh_vals, coords, faces, center, radius, stride):

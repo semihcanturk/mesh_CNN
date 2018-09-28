@@ -7,7 +7,7 @@ import autograd.scipy.signal
 from numpy.lib.stride_tricks import as_strided
 from future.utils import iteritems
 import mnist
-import hips_convnet
+from conv import hips_convnet
 import pickle
 
 def as_strided_seq(b, patch, stride):
@@ -95,11 +95,11 @@ def convolve_seq(a, b):
 
 
 def mnist_example():
-    B_file = open('b.pickle', 'rb')
+    B_file = open('../data/b.pickle', 'rb')
     B = pickle.load(B_file)  # variables come out in the order you put them in
     B_file.close()
 
-    A_file = open('a.pickle', 'rb')
+    A_file = open('../data/a.pickle', 'rb')
     A = pickle.load(A_file)  # variables come out in the order you put them in
     A_file.close()
 
