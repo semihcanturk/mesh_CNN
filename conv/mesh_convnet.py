@@ -10,6 +10,7 @@ import autograd.scipy.signal
 from autograd import grad
 from mesh import mesh_traversal_debug, generate_sphere_data, generate_icos_data, load_sphere
 import mnist
+import time
 
 center = 0
 r = 1
@@ -185,7 +186,13 @@ class full_layer(object):
 
 class tanh_layer(full_layer):
     def nonlinearity(self, x):
-        return np.tanh(x)
+        try:
+            return np.tanh(x)
+        except:
+            x = np.array(x)
+            end = time.time()
+            print(end-start)
+            print("boo")
 
 class softmax_layer(full_layer):
     def nonlinearity(self, x):
@@ -264,6 +271,7 @@ if __name__ == '__main__':
     batch_idxs = make_batches(N_data, batch_size)
     cur_dir = np.zeros(N_weights)
 
+    start = time.time()
     for epoch in range(num_epochs):
         print_perf(epoch, W)
         for idxs in batch_idxs:

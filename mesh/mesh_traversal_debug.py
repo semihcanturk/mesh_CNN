@@ -498,10 +498,11 @@ def mesh_convolve(filters, adj_mtx, vals_list, coords, faces, center, r, stride)
             for f in filters[c]:
                 row = []
                 for p in strided_mesh:
-                    p = np.array(p) # why does numpy decrease accuracy??
+                    p = np.array(p)
                     try:
                         p = p / LA.norm(p)
                     except:
+                        print("boo")
                         x = [i._value for i in p]
                         try:
                             p = x / LA.norm(x)
