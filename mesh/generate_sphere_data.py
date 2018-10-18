@@ -3,37 +3,43 @@ from mesh import load_sphere, mesh_traversal_debug
 from scipy import sparse
 
 
-def generate():
+def generate(n_ex=5000):
     verts, faces, adj_mtx = load_sphere.load(2)
     #adj_mtx, _, _ = mesh_traversal_debug.create_adj_mtx(np.array(verts), np.array(faces), is_sparse=True)
     print(sparse.issparse(adj_mtx))
 
     n_patterns = 5
+    n_data = n_ex
+    n_zeros = int(n_data * 0.5)
+    n_ones = int(n_data * 0.5)
+    train_test_split = 0.8
 
     mesh_data = list()
-    for i in range(100):
-        mesh_vals = np.random.choice(np.array([20, 40, 60, 80, 100]), size=162, replace=True)
-        if i < 20:
+    for i in range(n_data):
+        mesh_vals = np.random.choice(np.array([100]), size=162, replace=True)
+        if i < n_ones:
             for j in range(n_patterns):
                 target0 = np.random.choice(range(162), 1)
                 target1 = mesh_traversal_debug.find_region(adj_mtx, mesh_vals, np.array(verts), target0[0], 1)
                 target1 = target1[1:]
                 for j in target0:
-                    mesh_vals[j] = 100
+                    mesh_vals[j] = 0
                 for j in target1:
-                    mesh_vals[j] = 60
+                    mesh_vals[j] = 0
         mesh_data.append(mesh_vals)
 
     X = np.vstack(mesh_data)
-    ones = np.full(20, 1)
-    zeros = np.zeros(80)
+    ones = np.full(n_ones, 1)
+    zeros = np.zeros(n_zeros)
     y = np.append(ones, zeros)
-    y = y.reshape(100,1)
+    y = y.reshape(n_data, 1)
     y = y.astype(int)
     data = np.concatenate((X, y), axis=1)
     np.random.shuffle(data)
-    train = data[:80]
-    test = data[80:]
+
+    n_train = int(n_data * train_test_split)
+    train = data[:n_train]
+    test = data[n_train:]
 
     train_data = train[:, :162]
     train_labels = train[:, 162]

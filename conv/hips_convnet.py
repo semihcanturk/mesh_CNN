@@ -8,7 +8,12 @@ import autograd.numpy as np
 import autograd.numpy.random as npr
 import autograd.scipy.signal
 from autograd import grad
+from conv import convolution_impl
+#import mnist
+import gzip, pickle
 import mnist
+
+#mnist.init()
 
 convolve = autograd.scipy.signal.convolve
 
@@ -80,7 +85,8 @@ class conv_layer(object):
         # Output dimensions: [data, color_out, y, x]
         params = self.parser.get(param_vector, 'params')
         biases = self.parser.get(param_vector, 'biases')
-        conv = convolve(inputs, params, axes=([2, 3], [2, 3]), dot_axes = ([1], [0]), mode='valid')
+        conv = convolution_impl.convolve_seq(params, inputs)
+        #conv = convolve(inputs, params, axes=([2, 3], [2, 3]), dot_axes = ([1], [0]), mode='valid')
         return conv + biases
 
     def build_weights_dict(self, input_shape):
@@ -167,18 +173,24 @@ if __name__ == '__main__':
 
     # Load and process MNIST data
     print("Loading training data...")
+
     add_color_channel = lambda x : x.reshape((x.shape[0], 1, x.shape[1], x.shape[2]))
     one_hot = lambda x, K : np.array(x[:,None] == np.arange(K)[None, :], dtype=int)
-    #train_images, train_labels, test_images, test_labels = data_mnist.mnist()
 
-    train_images = np.random.randint(0,99, size=(1000,28,28), dtype=np.int64)
-    train_labels = np.random.randint(0,1, size=(1000), dtype=np.int64)
+    train_images, train_labels, test_images, test_labels = mnist.load()
 
-    test_images = np.random.randint(0,99, size=(1000,28,28), dtype=np.int64)
-    test_labels = np.random.randint(0,1, size=(1000), dtype=np.int64)
+    train_images = train_images.reshape(train_images.shape[0], 28, 28)
+    test_images = test_images.reshape(test_images.shape[0], 28, 28)
 
-    train_images = add_color_channel(train_images) / 255.0
-    test_images  = add_color_channel(test_images)  / 255.0
+    train_images = train_images[:1000, :, :]
+    train_labels = train_labels[:1000]
+    test_images = test_images[:50, :, :]
+    test_labels = test_labels[:50]
+
+    train_images = train_images.reshape((1000, 1, 28, 28)) / 255.0
+    test_images = test_images.reshape((50, 1, 28, 28)) / 255.0
+    #train_images = add_color_channel(train_images) / 255.0
+    #test_images  = add_color_channel(test_images)  / 255.0
     train_labels = one_hot(train_labels, 10)
     test_labels = one_hot(test_labels, 10)
     N_data = train_images.shape[0]

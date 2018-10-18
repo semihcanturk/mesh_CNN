@@ -190,9 +190,28 @@ class tanh_layer(full_layer):
             return np.tanh(x)
         except:
             x = np.array(x)
-            end = time.time()
-            print(end-start)
-            print("boo")
+            s = x.shape
+            fin = np.empty([s[0], s[1]])
+            for i in range(s[0]):
+                for j in range(s[1]):
+                    val_temp = x._value[i][j]
+                    if isinstance(val_temp, np.float64):
+                        val = val_temp
+                    elif isinstance(val_temp._value, np.float64):
+                        val = val_temp._value
+                    elif isinstance(val_temp._value._value, np.float64):
+                        val = val_temp._value._value
+                    else:
+                        if i == 0:
+                            val = val_temp._value._value._value._value
+                        else:
+                            val = val_temp._value._value._value._value._value._value._value._value
+                    fin[i][j] = val
+
+            #end = time.time()
+            #print(end-start)
+            #print("boo")
+            return np.tanh(fin)
 
 class softmax_layer(full_layer):
     def nonlinearity(self, x):
@@ -203,19 +222,19 @@ if __name__ == '__main__':
     # Network parameters
     L2_reg = 1.0
     input_shape = (1, 162,)
-    layer_specs = [conv_layer((7,), 6),
+    layer_specs = [#conv_layer((7,), 2),
+                   #maxpool_layer((6,)),
+                   conv_layer((7,), 5),
                    maxpool_layer((6,)),
-                   conv_layer((7,), 16),
-                   maxpool_layer((6,)),
-                   tanh_layer(120),
-                   tanh_layer(84),
+                   tanh_layer(30),
+                   #tanh_layer(30),
                    softmax_layer(2)]
 
     # Training parameters
     param_scale = 0.1
-    learning_rate = 1e-3
+    learning_rate = 1e-1
     momentum = 0.9
-    batch_size = 256
+    batch_size = 5 #256
     num_epochs = 50
 
     # Load and process mesh data
@@ -229,7 +248,7 @@ if __name__ == '__main__':
     matrices = [m0, m1, m2]
 
     train_images, train_labels, test_images, test_labels, \
-    adj_mtx, mesh_vals, coords, faces = generate_sphere_data.generate()
+    adj_mtx, mesh_vals, coords, faces = generate_sphere_data.generate(40)
     coords = np.array(coords)
     train_images = np.expand_dims(train_images, axis=1)
     test_images = np.expand_dims(test_images, axis=1)

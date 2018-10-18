@@ -28,9 +28,9 @@ def as_strided_seq(b, patch, stride):
                 for j in range(0,dims[3]-patch+1,stride):
                     if i+patch <= dims[2] and j+patch <= dims[3]:
                         if len(arr2) == 0:
-                            arr2 = np.array(b[k, :, i:i+patch, j:j+patch])
+                            arr2 = np.array([b[k, :, i:i+patch, j:j+patch]])
                         else:
-                            arr2 = npo.append(arr2, b[k, :, i:i+patch, j:j+patch], axis=0)
+                            arr2 = npo.append(arr2, [b[k, :, i:i+patch, j:j+patch]], axis=0)
                     #potential ELSE here
                 if len(arr2) == dims[2]-patch+1:
                     if len(arr) == 0:
@@ -54,10 +54,36 @@ def convolve_seq(a, b):
     b = as_strided_seq(b, 5, 1)  # arbitrary patch & stride for now
 
     for ctr in range(a_dims[1]):
-        temp = a[0][ctr]
-        tt = npo.flipud(temp)
-        tt = npo.fliplr(tt)
-        a[0][ctr] = tt
+        if isinstance(a, np.ndarray):
+            temp = a[0][ctr]
+            tt = npo.flipud(temp)
+            tt = npo.fliplr(tt)
+            a[0][ctr] = tt
+        else:
+            a = a._value
+            temp = a[0][ctr]
+            tt = npo.flipud(temp)
+            tt = npo.fliplr(tt)
+            a[0][ctr] = tt
+
+    if not isinstance(b[0][0][0][0][0][0], np.float):
+        s = b.shape
+        temp_b = np.empty(s)
+        for i in range(s[0]):
+            for j in range(s[1]):
+                for k in range(s[2]):
+                    for l in range(s[3]):
+                        for m in range(s[4]):
+                            for n in range(s[5]):
+                                #val = b[i][j][k][l][m][n]
+                                #temp_b[i][j][k][l][m][n] = val
+                                try:
+                                    val = b[i][j][k][l][m][n]._value
+                                    temp_b[i][j][k][l][m][n] = val
+                                except:
+                                    val = b[i][j][k][l][m][n]
+                                    temp_b[i][j][k][l][m][n] = val
+
 
     b_dims = b.shape
     ex_ct = b_dims[0]
@@ -69,9 +95,14 @@ def convolve_seq(a, b):
                 row = []
                 for k in range(b_dims[2]):
                     filter = a[:, i, :, :]
-                    filter = filter[0]
-                    patch = b[ctr, j, k, :, :]
-                    temp = npo.einsum('ij,ij->', filter, patch)
+                    #filter = filter[0]
+                    patch = b[ctr, j, k, :, :, :]
+                    try:
+                        temp = npo.einsum('ijk,ijk->', filter, patch)
+                    except:
+                        #print("boo")
+                        patch = temp_b[ctr, j, k, :, :, :]
+                        temp = npo.einsum('ijk,ijk->', filter, patch)
                     row.append(temp)
                 if len(arr) == 0:
                     arr = npo.array([row])

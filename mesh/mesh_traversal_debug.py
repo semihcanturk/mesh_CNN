@@ -454,9 +454,6 @@ def get_neighs(adj_mtx, coords, vertex, r):
 
 
 def mesh_strider(adj_mtx, mesh_vals, coords, faces, center, radius, stride):
-    # TODO: Account for edge cases where we try to get a patch from an edge vertex, which shouldn't be possible.
-    # Instead, traversal should stop when the edge of the patch reaches the edge of the mesh.
-    # TODO: Account for values - what are the values that we obtain from each vertex?
     """
     Returns a list of patches after traversing and obtaining the patches for each mesh
     :param adj_mtx: adjacency matrix of the mesh
