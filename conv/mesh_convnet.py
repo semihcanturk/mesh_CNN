@@ -11,6 +11,7 @@ from autograd import grad
 from mesh import mesh_traversal_debug, generate_sphere_data, generate_icos_data, load_sphere
 import mnist
 import time
+import datetime
 
 center = 0
 r = 1
@@ -92,7 +93,7 @@ class conv_layer(object):
             adj_mtx = m1
             coords = np.array(v1)
             faces = f1
-        elif inputs.shape[2] ==12:
+        elif inputs.shape[2] == 12:
             adj_mtx = m0
             coords = np.array(v0)
             faces = f0
@@ -195,11 +196,11 @@ class tanh_layer(full_layer):
             for i in range(s[0]):
                 for j in range(s[1]):
                     val_temp = x._value[i][j]
-                    if isinstance(val_temp, np.float64):
+                    if isinstance(val_temp, np.float):
                         val = val_temp
-                    elif isinstance(val_temp._value, np.float64):
+                    elif isinstance(val_temp._value, np.float):
                         val = val_temp._value
-                    elif isinstance(val_temp._value._value, np.float64):
+                    elif isinstance(val_temp._value._value, np.float):
                         val = val_temp._value._value
                     else:
                         if i == 0:
@@ -222,20 +223,20 @@ if __name__ == '__main__':
     # Network parameters
     L2_reg = 1.0
     input_shape = (1, 162,)
-    layer_specs = [#conv_layer((7,), 2),
-                   #maxpool_layer((6,)),
-                   conv_layer((7,), 5),
+    layer_specs = [conv_layer((7,), 1),
                    maxpool_layer((6,)),
-                   tanh_layer(30),
-                   #tanh_layer(30),
+                   #conv_layer((7,), 5),
+                   #maxpool_layer((6,)),
+                   tanh_layer(120),
+                   #tanh_layer(84),
                    softmax_layer(2)]
 
     # Training parameters
-    param_scale = 0.1
-    learning_rate = 1e-1
+    param_scale = 0.7
+    learning_rate = 1e-3
     momentum = 0.9
-    batch_size = 5 #256
-    num_epochs = 50
+    batch_size = 256
+    num_epochs = 10
 
     # Load and process mesh data
     print("Loading training data...")
@@ -248,10 +249,10 @@ if __name__ == '__main__':
     matrices = [m0, m1, m2]
 
     train_images, train_labels, test_images, test_labels, \
-    adj_mtx, mesh_vals, coords, faces = generate_sphere_data.generate(40)
+    adj_mtx, mesh_vals, coords, faces = generate_sphere_data.generate(1000)
     coords = np.array(coords)
-    train_images = np.expand_dims(train_images, axis=1)
-    test_images = np.expand_dims(test_images, axis=1)
+    train_images = np.expand_dims(train_images, axis=1) / 255
+    test_images = np.expand_dims(test_images, axis=1) / 255
 
     order = mesh_traversal_debug.traverse_mesh(coords, faces, center, stride)  # list of vertices, ordered
     rem = set(range(mesh_vals.shape[0])).difference(set(order))
@@ -290,8 +291,14 @@ if __name__ == '__main__':
     batch_idxs = make_batches(N_data, batch_size)
     cur_dir = np.zeros(N_weights)
 
-    start = time.time()
+    #start = time.time()
+    #sdate = datetime.datetime.fromtimestamp(start).strftime('%Y-%m-%d %H:%M:%S')
+    #print(sdate)
+
     for epoch in range(num_epochs):
+        etime = time.time()
+        edate = datetime.datetime.fromtimestamp(etime).strftime('%Y-%m-%d %H:%M:%S')
+        print(edate)
         print_perf(epoch, W)
         for idxs in batch_idxs:
             grad_W = loss_grad(W, train_images[idxs], train_labels[idxs])

@@ -16,16 +16,16 @@ def generate(n_ex=5000):
 
     mesh_data = list()
     for i in range(n_data):
-        mesh_vals = np.random.choice(np.array([100]), size=162, replace=True)
+        mesh_vals = np.random.choice(np.array([1]), size=162, replace=True)
         if i < n_ones:
             for j in range(n_patterns):
                 target0 = np.random.choice(range(162), 1)
-                target1 = mesh_traversal_debug.find_region(adj_mtx, mesh_vals, np.array(verts), target0[0], 1)
+                _, target1 = mesh_traversal_debug.find_region(adj_mtx, mesh_vals, np.array(verts), target0[0], 1, neighs=True)
                 target1 = target1[1:]
-                for j in target0:
-                    mesh_vals[j] = 0
-                for j in target1:
-                    mesh_vals[j] = 0
+                for k in target0:
+                    mesh_vals[k] = np.random.uniform(100, 200)
+                for k in target1:
+                    mesh_vals[k] = np.random.uniform(100, 200)
         mesh_data.append(mesh_vals)
 
     X = np.vstack(mesh_data)

@@ -159,14 +159,14 @@ if __name__ == '__main__':
     input_shape = (1, 28, 28)
     layer_specs = [#conv_layer((5, 5), 6),
                    #maxpool_layer((2, 2)),
-                   conv_layer((5, 5), 16),
+                   conv_layer((5, 5), 1),
                    maxpool_layer((2, 2)),
                    tanh_layer(120),
-                   tanh_layer(84),
+                   #tanh_layer(84),
                    softmax_layer(2)]
 
     # Training parameters
-    param_scale = 0.7
+    param_scale = 0.9
     learning_rate = 1e-3
     momentum = 0.9
     batch_size = 256
@@ -180,58 +180,58 @@ if __name__ == '__main__':
 
     ##############
 
-    train_images, train_labels, test_images, test_labels = mnist.load()
-
-    train_images = train_images.reshape(train_images.shape[0], 28, 28)
-    test_images = test_images.reshape(test_images.shape[0], 28, 28)
-
-    train_images = train_images[:1000, :, :]
-    train_labels = train_labels[:1000]
-    test_images = test_images[:50, :, :]
-    test_labels = test_labels[:50]
-
-    train_images = train_images.reshape((1000, 1, 28, 28)) / 255.0
-    test_images = test_images.reshape((50, 1, 28, 28)) / 255.0
-
-    train_temp = np.zeros(len(train_labels))
-    test_temp = np.zeros(len(test_labels))
-    for i in range(len(train_labels)):
-        if train_labels[i] % 2 == 1:
-            temp = train_images[i][0]
-            #np.random.shuffle(temp)
-            #for j in temp:
-            #    np.random.shuffle(j)
-            for j in range(temp.shape[0]):
-                for k in range(temp.shape[1]):
-                    temp[j][k] = 0.5
-            train_images[i][0] = temp
-            train_temp[i] = 1
-    for i in range(len(test_labels)):
-        if test_labels[i] % 2 == 1:
-            temp = test_images[i][0]
-            #np.random.shuffle(temp)
-            #for j in temp:
-            #    np.random.shuffle(j)
-            for j in range(temp.shape[0]):
-                for k in range(temp.shape[1]):
-                    temp[j][k] = 0.5
-            test_images[i][0] = temp
-            test_temp[i] = 1
-
-    train_labels = one_hot(train_temp, 2)
-    test_labels = one_hot(test_temp, 2)
+    # train_images, train_labels, test_images, test_labels = mnist.load()
+    #
+    # train_images = train_images.reshape(train_images.shape[0], 28, 28)
+    # test_images = test_images.reshape(test_images.shape[0], 28, 28)
+    #
+    # train_images = train_images[:1000, :, :]
+    # train_labels = train_labels[:1000]
+    # test_images = test_images[:50, :, :]
+    # test_labels = test_labels[:50]
+    #
+    # train_images = train_images.reshape((1000, 1, 28, 28)) / 255.0
+    # test_images = test_images.reshape((50, 1, 28, 28)) / 255.0
+    #
+    # train_temp = np.zeros(len(train_labels))
+    # test_temp = np.zeros(len(test_labels))
+    # for i in range(len(train_labels)):
+    #     if train_labels[i] % 2 == 1:
+    #         temp = train_images[i][0]
+    #         #np.random.shuffle(temp)
+    #         #for j in temp:
+    #         #    np.random.shuffle(j)
+    #         for j in range(temp.shape[0]):
+    #             for k in range(temp.shape[1]):
+    #                 temp[j][k] = 0.5
+    #         train_images[i][0] = temp
+    #         train_temp[i] = 1
+    # for i in range(len(test_labels)):
+    #     if test_labels[i] % 2 == 1:
+    #         temp = test_images[i][0]
+    #         #np.random.shuffle(temp)
+    #         #for j in temp:
+    #         #    np.random.shuffle(j)
+    #         for j in range(temp.shape[0]):
+    #             for k in range(temp.shape[1]):
+    #                 temp[j][k] = 0.5
+    #         test_images[i][0] = temp
+    #         test_temp[i] = 1
+    #
+    # train_labels = one_hot(train_temp, 2)
+    # test_labels = one_hot(test_temp, 2)
 
     #train_labels = one_hot(train_labels, 10)
     #test_labels = one_hot(test_labels, 10)
 
     ###############
 
-    # train_images, train_labels, test_images, test_labels = generate_square_data.generate(1000)
-    #
-    # train_images = train_images.reshape((800, 1, 28, 28))# / 255.0
-    # test_images = test_images.reshape((200, 1, 28, 28))# / 255.0
-    # train_labels = one_hot(train_labels, 2)
-    # test_labels = one_hot(test_labels, 2)
+    train_images, train_labels, test_images, test_labels = generate_square_data.generate(1000)
+
+    train_images = train_images.reshape((800, 1, 28, 28)) / 255.0
+    test_images = test_images.reshape((200, 1, 28, 28)) / 255.0
+    train_labels = one_hot(train_labels, 2)
+    test_labels = one_hot(test_labels, 2)
 
 
     N_data = train_images.shape[0]
