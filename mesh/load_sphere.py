@@ -1,6 +1,6 @@
 import openmesh as om
 from math import sqrt
-from mesh import mesh_traversal_debug
+from mesh import mesh_traversal
 import numpy as np
 
 """
@@ -134,6 +134,6 @@ def load(subdiv=2):
 
     om.write_mesh('../data/small_sphere.off', mesh)
 
-    adj_mtx, _, _ = mesh_traversal_debug.create_adj_mtx(np.array(verts), np.array(faces), is_sparse=True)
+    adj_mtx, _, _ = mesh_traversal.create_adj_mtx(np.array(verts), np.array(faces), is_sparse=True)
 
     return verts, faces, adj_mtx

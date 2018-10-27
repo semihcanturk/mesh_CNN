@@ -1,5 +1,5 @@
 import numpy as np
-from mesh import load_sphere, mesh_traversal_debug
+from mesh import load_sphere, mesh_traversal
 from scipy import sparse
 
 
@@ -12,7 +12,7 @@ def generate(n_ex=5000):
 
     mesh_data = list()
     for i in range(n_data):
-        mesh_vals = np.ones((28, 28)) #* -1 * 225
+        mesh_vals = np.ones((28, 28)) * -1 * 255
         if i < n_ones:
             x = np.random.choice(range(10))
             y = np.random.choice(range(24))

@@ -2,9 +2,8 @@ import os
 os.environ['ETS_TOOLKIT'] = 'qt4'
 import openmesh as om
 import autograd.numpy as np
-import numpy as npo
 import math
-from numpy import linalg as LA
+import autograd.numpy.linalg as LA
 from numpy import genfromtxt
 import time
 from scipy import sparse
@@ -112,8 +111,7 @@ def get_order(adj_mtx, coords, ix_list, closest_ix, verts):
         return arr
 
     while len(arr) != len(ix_list):
-        if len(neigh_list) == 2:
-        #if len(neigh_list) >= 2:
+        if len(neigh_list) >= 2:
             v1 = neigh_list[0]
             v2 = neigh_list[1]
             x1 = coords[v1]
@@ -204,10 +202,13 @@ def traverse_mesh(coords, faces, center, stride=1, verbose=False, is_sparse=True
             l = adj_mtx.shape[0]
         else:
             l = len(adj_mtx[0])
-        while len(verts) != l:    # until all vertices are seen #TODO: Fix inequality bug
-        # while len(verts) <= 0.99 * l:
+        # until all vertices are seen #TODO: Fix inequality bug
+        while len(verts) <= 0.99 * l:
             # this is the closest vertex of the new level
             # find the ordering of the level
+            if verbose_ctr == 130:
+                print("Here we are!")
+                print(len(verts))
             if verbose:
                 print("Iteration {}: {}".format(verbose_ctr, time.time() - start))
             verbose_ctr = verbose_ctr + 1
@@ -395,11 +396,64 @@ def find_region(adj_mtx, mesh_vals, coords, vertex, r, neighs=False):
     else:
         return vals
 
+def get_neighs(adj_mtx, coords, vertex, r):
+    verts = list()
+
+    # level_0
+    verts.append(vertex)
+    v = vertex
+
+    # find closest point in level 1
+    if sparse.issparse(adj_mtx):
+        nz = adj_mtx.tolil().rows
+        ix_list = nz[v]
+    else:
+        row = adj_mtx[v]
+        ix_list = np.nonzero(row)
+        ix_list = ix_list[0]
+
+    dists = []
+    for j in ix_list:
+        d = get_dist(coords, v, j)
+        dists.append(d)
+    ix_min = ix_list[dists.index(min(dists))]
+    closest_ix = ix_min
+
+    # levels_>=1
+    for i in range(1, r + 1):
+        # this is the closest vertex of the new level
+        # find the ordering of the level
+        arr = get_order(adj_mtx, coords, ix_list, closest_ix, verts)
+        verts = verts + arr
+        # get next level: for each in ix_list, get neighbors that are not in <verts>, then add them to the new list
+        next_list = []
+        for j in ix_list:
+            if sparse.issparse(adj_mtx):
+                new_row = nz[j]
+            else:
+                new_row = adj_mtx[j]
+                new_row = np.nonzero(new_row)
+                new_row = new_row[0]
+
+            for k in new_row:
+                if k not in verts:
+                    next_list.append(k)
+        next_list = list(set(next_list))
+
+        # find starting point of next level using line eq
+        c1 = coords[vertex]
+        c2 = coords[closest_ix]
+        line_dists = []
+        for j in next_list:
+            c3 = coords[j]
+            line_dist = LA.norm(np.cross(c2 - c1, c1 - c3)) / LA.norm(c2 - c1)  # calculate distance to line
+            line_dists.append(line_dist)
+        ix_list = next_list
+        closest_ix = next_list[line_dists.index(min(line_dists))]
+    return verts
+
 
 def mesh_strider(adj_mtx, mesh_vals, coords, faces, center, radius, stride):
-    # TODO: Account for edge cases where we try to get a patch from an edge vertex, which shouldn't be possible.
-    # Instead, traversal should stop when the edge of the patch reaches the edge of the mesh.
-    # TODO: Account for values - what are the values that we obtain from each vertex?
     """
     Returns a list of patches after traversing and obtaining the patches for each mesh
     :param adj_mtx: adjacency matrix of the mesh
@@ -412,12 +466,16 @@ def mesh_strider(adj_mtx, mesh_vals, coords, faces, center, radius, stride):
     """
     patches = []
     vertices = traverse_mesh(coords, faces, center, stride)   # list of vertices, ordered
+    rem = set(range(mesh_vals.shape[0])).difference(set(vertices))
+    vertices = vertices + list(rem)
     for v in vertices:                             # -1 because edges cant be centers
-        patches.append(find_region(adj_mtx, mesh_vals, coords, v, radius))     # so no patches with them as centers
+        vals, neigh = find_region(adj_mtx, mesh_vals, coords, v, radius, neighs=True)
+        patches.append(vals)     # so no patches with them as centers
+
     return patches
 
 
-def mesh_convolve(filters, adj_mtx, mesh_vals, coords, faces, center, r, stride):
+def mesh_convolve(filters, adj_mtx, vals_list, coords, faces, center, r, stride):
     """
     Strides the mesh and applies a convolution to the patches
     :param filters: list of filters
@@ -425,25 +483,57 @@ def mesh_convolve(filters, adj_mtx, mesh_vals, coords, faces, center, r, stride)
     :param coords: coordinates of each vertex
     :return: result of the convolution operation
     """
-
-    strided_mesh = mesh_strider(adj_mtx, mesh_vals, coords, faces, center, r, stride)
-    arr = []
-    for f in filters:
-        row = []
-        for p in strided_mesh:
-            p = p / LA.norm(p)
-            try:
-                # temp = np.einsum('i,i->', f, p)
-                temp = npo.dot(f, p)
-                row.append(temp)
-            except:
-                # temp = np.einsum('i,i->', f[:len(p)], p)
-                temp = npo.dot(f[:len(p)], p)
-                row.append(temp)
-        if len(arr) == 0:
-            arr = npo.array([row])
-            row = []
+    #center = 93 # arbitrary
+    #r = 1   # arbitrary
+    f_count = vals_list.shape[1]
+    conv_arr = []
+    for vals in vals_list:
+        depth_arr = []
+        for c in range(f_count):
+            strided_mesh = mesh_strider(adj_mtx, vals[c], coords, faces, center, r, stride)
+            filter_arr = []
+            for f in filters[c]:
+                row = []
+                for p in strided_mesh:
+                    p = np.array(p)
+                    try:
+                        p = p / LA.norm(p)
+                    except:
+                        print("boo")
+                        x = [i._value for i in p]
+                        try:
+                            p = x / LA.norm(x)
+                        except:
+                            y = [i._value for i in x]
+                            try:
+                                p = y / LA.norm(y)
+                            except:
+                                print("boo")
+                    try:
+                        #temp = np.einsum('i,i->', f, p)
+                        temp = np.dot(f, p)
+                        row.append(temp)
+                    except:
+                        #temp = np.einsum('i,i->', f[:len(p)], p)
+                        temp = np.dot(f[:len(p)], p)
+                        row.append(temp)
+                if len(filter_arr) == 0:
+                    filter_arr = np.array([row])
+                    row = []
+                else:
+                    filter_arr = np.vstack((filter_arr, [row]))
+                    row = []
+            if len(depth_arr) == 0:
+                depth_arr = np.array([filter_arr])
+                filter_arr = []
+            else:
+                depth_arr = np.vstack((depth_arr, [filter_arr]))
+                filter_arr = []
+        if len(conv_arr) == 0:
+            conv_arr = np.array([depth_arr])
+            depth_arr = []
         else:
-            arr = npo.vstack((arr, [row]))
-            row = []
-    return arr
+            conv_arr = np.vstack((conv_arr, [depth_arr]))
+            depth_arr = []
+    conv_arr = np.sum(conv_arr, axis=1)
+    return conv_arr

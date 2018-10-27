@@ -1,7 +1,7 @@
 import numpy as np
 import math
 import openmesh as om
-from mesh import mesh_traversal
+from mesh import mesh_traversal_deprecated
 
 
 coords = np.array([
@@ -47,9 +47,9 @@ def load():
     return coords, faces
 
 
-one_stride_s = mesh_traversal.traverse_mesh(coords, faces, 0, is_sparse=True)
-two_stride_s = mesh_traversal.traverse_mesh(coords, faces, 0, 2, is_sparse=True)
-three_stride_s = mesh_traversal.traverse_mesh(coords, faces, 0, 3, is_sparse=True)
+one_stride_s = mesh_traversal_deprecated.traverse_mesh(coords, faces, 0, is_sparse=True)
+two_stride_s = mesh_traversal_deprecated.traverse_mesh(coords, faces, 0, 2, is_sparse=True)
+three_stride_s = mesh_traversal_deprecated.traverse_mesh(coords, faces, 0, 3, is_sparse=True)
 
 print("SPARSE MATRIX IMPLEMENTATION")
 print("Result of 1-stride example: {}".format(one_stride_s))

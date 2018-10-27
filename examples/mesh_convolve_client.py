@@ -1,7 +1,7 @@
 import autograd.numpy as np
 import numpy as npo
 import pickle
-from mesh import mesh_traversal, mesh_traversal_debug, load_sphere
+from mesh import mesh_traversal_deprecated, mesh_traversal, load_sphere
 import random
 from scipy import stats
 from numpy import linalg as LA
@@ -19,8 +19,8 @@ v, f = load_sphere.load()
 v = np.array(v)
 f = np.array(f)
 
-# TODO: Verify that this is working correctly after implementation changes in mesh_traversal.py
-adj_mtx, coords, faces = mesh_traversal_debug.create_adj_mtx(v, f)
+# TODO: Verify that this is working correctly after implementation changes in mesh_traversal_deprecated.py
+adj_mtx, coords, faces = mesh_traversal.create_adj_mtx(v, f)
 
 #traversal_list = mesh_traversal_debug.traverse_mesh(coords, faces, 28105, verbose=True, is_sparse=True)
 #pickle.dump(traversal_list, open("var.pickle", "wb"))
@@ -76,8 +76,8 @@ print(mesh_vals[150])
 #large_region = mesh_traversal_debug.find_region(adj_mtx, coords, 93, 2)
 
 #mesh_convolve(filters, adj_mtx, coords, faces, center, r, stride):
-conv = mesh_traversal_debug.mesh_convolve(filters, adj_mtx, mesh_vals, coords, faces, 93, 2,
-                                          1)  # filters, adj_mtx, coords, faces, center, r, stride
+conv = mesh_traversal.mesh_convolve(filters, adj_mtx, mesh_vals, coords, faces, 93, 2,
+                                    1)  # filters, adj_mtx, coords, faces, center, r, stride
 print("Convolution Result: ")
 print(conv)
 pickle.dump(conv, open("conv_result.pickle", "wb"))

@@ -167,10 +167,10 @@ if __name__ == '__main__':
 
     # Training parameters
     param_scale = 0.9
-    learning_rate = 1e-3
+    learning_rate = 1e-4
     momentum = 0.9
     batch_size = 256
-    num_epochs = 50
+    num_epochs = 100
 
     # Load and process MNIST data
     print("Loading training data...")

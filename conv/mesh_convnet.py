@@ -8,7 +8,7 @@ import autograd.numpy as np
 import autograd.numpy.random as npr
 import autograd.scipy.signal
 from autograd import grad
-from mesh import mesh_traversal_debug, generate_sphere_data, generate_icos_data, load_sphere
+from mesh import mesh_traversal, generate_sphere_data, load_sphere
 import mnist
 import time
 import datetime
@@ -97,7 +97,7 @@ class conv_layer(object):
             adj_mtx = m0
             coords = np.array(v0)
             faces = f0
-        conv = mesh_traversal_debug.mesh_convolve(params, adj_mtx, inputs, coords, faces, center, r, stride)
+        conv = mesh_traversal.mesh_convolve(params, adj_mtx, inputs, coords, faces, center, r, stride)
         #conv = convolve(inputs, params, axes=([2, 3], [2, 3]), dot_axes = ([1], [0]), mode='valid')
         #conv.reshape(1, 6, 162, 1)
         return conv + biases
@@ -149,7 +149,7 @@ class maxpool_layer(object):
             new_shape += (new_dim,)
         result = None
         for i in range(new_dim):
-            n = mesh_traversal_debug.get_neighs(adj_mtx, coords, i, 1)
+            n = mesh_traversal.get_neighs(adj_mtx, coords, i, 1)
             nlist = None
             for neighbor in n:
                 x = inputs[:, :, order.index(neighbor)]
@@ -232,11 +232,11 @@ if __name__ == '__main__':
                    softmax_layer(2)]
 
     # Training parameters
-    param_scale = 0.7
-    learning_rate = 1e-3
+    param_scale = 0.9
+    learning_rate = 1e-4
     momentum = 0.9
-    batch_size = 256
-    num_epochs = 10
+    batch_size = 150
+    num_epochs = 100
 
     # Load and process mesh data
     print("Loading training data...")
@@ -254,15 +254,15 @@ if __name__ == '__main__':
     train_images = np.expand_dims(train_images, axis=1) / 255
     test_images = np.expand_dims(test_images, axis=1) / 255
 
-    order = mesh_traversal_debug.traverse_mesh(coords, faces, center, stride)  # list of vertices, ordered
+    order = mesh_traversal.traverse_mesh(coords, faces, center, stride)  # list of vertices, ordered
     rem = set(range(mesh_vals.shape[0])).difference(set(order))
     order = order + list(rem)
 
     o2 = order
-    o1 = mesh_traversal_debug.traverse_mesh(np.array(v1), f1, center, stride)
+    o1 = mesh_traversal.traverse_mesh(np.array(v1), f1, center, stride)
     rem1 = set(range(42)).difference(set(o1))
     o1 = o1 + list(rem1)
-    o0 = mesh_traversal_debug.traverse_mesh(np.array(v0), f0, center, stride)
+    o0 = mesh_traversal.traverse_mesh(np.array(v0), f0, center, stride)
     rem0 = set(range(12)).difference(set(o0))
     o0 = o0 + list(rem0)
 

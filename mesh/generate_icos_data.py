@@ -1,11 +1,11 @@
 import numpy as np
-from mesh import load_icosahedron, mesh_traversal_debug
+from mesh import load_icosahedron, mesh_traversal
 from scipy import sparse
 
 
 def generate():
     verts, faces = load_icosahedron.load()
-    adj_mtx, _, _ = mesh_traversal_debug.create_adj_mtx(np.array(verts), np.array(faces), is_sparse=True)
+    adj_mtx, _, _ = mesh_traversal.create_adj_mtx(np.array(verts), np.array(faces), is_sparse=True)
     print(sparse.issparse(adj_mtx))
 
     n_patterns = 1
@@ -16,7 +16,7 @@ def generate():
         if i < 20:
             for j in range(n_patterns):
                 target0 = np.random.choice(range(12), 1)
-                _, target1 = mesh_traversal_debug.find_region(adj_mtx, mesh_vals, np.array(verts), target0[0], 1, neighs=True)
+                _, target1 = mesh_traversal.find_region(adj_mtx, mesh_vals, np.array(verts), target0[0], 1, neighs=True)
                 target1 = target1[1:]
                 for j in target0:
                     mesh_vals[j] = 0

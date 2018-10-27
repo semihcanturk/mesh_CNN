@@ -1,6 +1,6 @@
 import autograd.numpy as np
 import pickle
-from mesh import mesh_traversal, mesh_traversal_debug
+from mesh import mesh_traversal_deprecated, mesh_traversal
 
 """
 
@@ -8,10 +8,10 @@ from mesh import mesh_traversal, mesh_traversal_debug
 _author_ = "Semih Cantürk"
 _credits_ = "Cassiano Becker"
 
-# TODO: Verify that this is working correctly after implementation changes in mesh_traversal.py
-adj_mtx, coords, faces = mesh_traversal.create_adj_mtx('../data/data0.csv', '../data/data1.csv')
+# TODO: Verify that this is working correctly after implementation changes in mesh_traversal_deprecated.py
+adj_mtx, coords, faces = mesh_traversal_deprecated.create_adj_mtx('../data/data0.csv', '../data/data1.csv')
 
-traversal_list = mesh_traversal_debug.traverse_mesh(coords, faces, 28105, verbose=True, is_sparse=True)
+traversal_list = mesh_traversal.traverse_mesh(coords, faces, 28105, verbose=True, is_sparse=True)
 pickle.dump(traversal_list, open("var.pickle", "wb"))
 print(len(traversal_list))
 

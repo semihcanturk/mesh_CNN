@@ -1,5 +1,5 @@
 import numpy as np
-from mesh import load_sphere, mesh_traversal_debug
+from mesh import load_sphere, mesh_traversal
 from scipy import sparse
 
 
@@ -20,7 +20,7 @@ def generate(n_ex=5000):
         if i < n_ones:
             for j in range(n_patterns):
                 target0 = np.random.choice(range(162), 1)
-                _, target1 = mesh_traversal_debug.find_region(adj_mtx, mesh_vals, np.array(verts), target0[0], 1, neighs=True)
+                _, target1 = mesh_traversal.find_region(adj_mtx, mesh_vals, np.array(verts), target0[0], 1, neighs=True)
                 target1 = target1[1:]
                 for k in target0:
                     mesh_vals[k] = np.random.uniform(100, 200)
