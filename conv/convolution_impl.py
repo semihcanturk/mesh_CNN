@@ -170,19 +170,6 @@ def convolve_seq_iter(a, b):
 
 
 def convolve_seq_tensor(a, b):
-    a_dims = a.shape
-    for ctr in range(a_dims[1]):
-        if isinstance(a, np.ndarray):
-            temp = a[0][ctr]
-            tt = npo.flipud(temp)
-            tt = npo.fliplr(tt)
-            a[0][ctr] = tt
-        else:
-            a = a._value
-            temp = a[0][ctr]
-            tt = npo.flipud(temp)
-            tt = npo.fliplr(tt)
-            a[0][ctr] = tt
 
     check1 = time.time()
     b = as_strided_seq(b, 5, 1)  # arbitrary patch & stride for now
@@ -198,10 +185,10 @@ def convolve_seq_tensor(a, b):
         out = npo.einsum(a, [12, 1, 10, 11], b, [4, 12, 10, 11, 8, 9])
         out = np.swapaxes(out, 0, 1)
     check3 = time.time()
-    print("STRIDE TIME")
-    print(check2 - check1)
-    print("EINSUM TIME")
-    print(check3 - check2)
+    #print("STRIDE TIME")
+    #print(check2 - check1)
+    #print("EINSUM TIME")
+    #print(check3 - check2)
     return out
 
 

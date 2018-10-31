@@ -5,6 +5,7 @@ from __future__ import print_function
 from builtins import range
 
 import autograd.numpy as np
+import numpy as npo
 import autograd.numpy.random as npr
 import autograd.scipy.signal
 from autograd import grad
@@ -22,6 +23,7 @@ convolve = autograd.scipy.signal.convolve
 
 A_def = None
 B_def = None
+init_bool = True
 
 
 class WeightsParser(object):
@@ -81,6 +83,7 @@ class conv_layer(object):
     def __init__(self, kernel_shape, num_filters):
         self.kernel_shape = kernel_shape
         self.num_filters = num_filters
+        self.bool = True    #TODO: may change to global variable
 
     def forward_pass(self, inputs, param_vector):
         # Input dimensions:  [data, color_in, y, x]
@@ -88,9 +91,34 @@ class conv_layer(object):
         # Output dimensions: [data, color_out, y, x]
         params = self.parser.get(param_vector, 'params')
         biases = self.parser.get(param_vector, 'biases')
+        if self.bool:
+            self.bool = False
+            a = params
+            a_dims = a.shape
+            for ctr in range(a_dims[1]):
+                if isinstance(a, np.ndarray):
+                    temp = a[0][ctr]
+                    tt = npo.flipud(temp)
+                    tt = npo.fliplr(tt)
+                    a[0][ctr] = tt
+                else:
+                    a = a._value
+                    temp = a[0][ctr]
+                    tt = npo.flipud(temp)
+                    tt = npo.fliplr(tt)
+                    a[0][ctr] = tt
+
+            params = a
+
         conv = convolution_impl.convolve_seq_tensor(params, inputs)
         #conv = convolve(inputs, params, axes=([2, 3], [2, 3]), dot_axes = ([1], [0]), mode='valid')
-
+        if not isinstance(conv, np.ndarray):
+            conv = conv._value
+        if not isinstance(params, np.ndarray):
+            params = params._value
+        if not isinstance(inputs, np.ndarray):
+            inputs = inputs._value
+        foo1.append([params, inputs])
         #with open('CONV_ORG.pkl', 'wb') as f:
         #    pickle.dump(conv, f)
 
@@ -176,12 +204,9 @@ if __name__ == '__main__':
     learning_rate = 1e-3
     momentum = 0.9
     batch_size = 256
-    num_epochs = 3
+    num_epochs = 10
 
-    #foo1 = pickle.load(open("CONV_ORG.pkl", "rb"))
-    #foo2 = pickle.load(open("CONV_TENSOR.pkl", "rb"))
-    #print(np.allclose(foo1, foo2))
-    #x = foo1 - foo2
+    foo1 = []
 
     # Load and process MNIST data
     print("Loading training data...")
@@ -274,6 +299,8 @@ if __name__ == '__main__':
         if epoch == num_epochs - 1:
             etime = time.time()
             print(etime-stime)
+            pickle.dump(foo1, open("ab_array_tensor.pickle", "wb"))
+            exit(0)
         for idxs in batch_idxs:
             aaa = train_images[idxs]
             bbb = train_labels[idxs]
