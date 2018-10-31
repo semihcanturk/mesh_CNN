@@ -2,11 +2,13 @@ import os
 os.environ['ETS_TOOLKIT'] = 'qt4'
 import openmesh as om
 import autograd.numpy as np
+import numpy as npo
 import math
 import autograd.numpy.linalg as LA
 from numpy import genfromtxt
 import time
 from scipy import sparse
+import itertools
 
 
 # API
@@ -389,12 +391,17 @@ def find_region(adj_mtx, mesh_vals, coords, vertex, r, neighs=False):
 
     vals = list()
     for i in verts:
-        vals.append(mesh_vals[i])
+        try:
+            vals.append(mesh_vals[0, i])
+        except:
+            vals.append(mesh_vals[i])
+
 
     if neighs:
         return vals, verts
     else:
         return vals
+
 
 def get_neighs(adj_mtx, coords, vertex, r):
     verts = list()
@@ -475,6 +482,38 @@ def mesh_strider(adj_mtx, mesh_vals, coords, faces, center, radius, stride):
     return patches
 
 
+def mesh_strider_batch(adj_mtx, vals_list, coords, faces, center, r, stride):
+    """
+    Returns a list of patches after traversing and obtaining the patches for each mesh
+    :param adj_mtx: adjacency matrix of the mesh
+    :param coords:  coordinates of each vertes
+    :param faces:   the vertices in each triangle of the mesh
+    :param center:  center vertex
+    :param radius:  radius for the patches
+    :param stride:  stride in each traversal step
+    :return:    array of patches in traversal order, in form of list of lists
+    """
+    out = []
+    ctr = 0
+    for mesh_vals in vals_list:
+        ctr = ctr + 1
+        patches = []
+        vertices = traverse_mesh(coords, faces, center, stride)   # list of vertices, ordered
+        rem = set(range(mesh_vals.shape[1])).difference(set(vertices))
+        vertices = vertices + list(rem)
+        for v in vertices:
+            vals, neigh = find_region(adj_mtx, mesh_vals, coords, v, r, neighs=True)
+            patches.append(np.array(vals))
+        if len(out) == 0:
+            out = np.expand_dims(np.array(list(itertools.zip_longest(*patches, fillvalue=0))).T, axis=0)
+        else:
+            p = np.array(list(itertools.zip_longest(*patches, fillvalue=0))).T
+            p = np.expand_dims(p, axis=0)
+            out = np.concatenate((out, p), axis=0)
+
+    return out
+
+
 def mesh_convolve(filters, adj_mtx, vals_list, coords, faces, center, r, stride):
     """
     Strides the mesh and applies a convolution to the patches
@@ -485,6 +524,8 @@ def mesh_convolve(filters, adj_mtx, vals_list, coords, faces, center, r, stride)
     """
     #center = 93 # arbitrary
     #r = 1   # arbitrary
+    #with open('conv_objects.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
+    #    pickle.dump([filters, adj_mtx, vals_list, coords, faces, center, r, stride], f)
     f_count = vals_list.shape[1]
     conv_arr = []
     for vals in vals_list:
@@ -537,3 +578,142 @@ def mesh_convolve(filters, adj_mtx, vals_list, coords, faces, center, r, stride)
             depth_arr = []
     conv_arr = np.sum(conv_arr, axis=1)
     return conv_arr
+
+
+def mesh_convolve_iter(a, adj_mtx, vals_list, coords, faces, center, r, stride):
+    """
+    Strides the mesh and applies a convolution to the patches
+    :param filters: list of filters
+    :param adj_mtx: adjacency matrix
+    :param coords: coordinates of each vertex
+    :return: result of the convolution operation
+    """
+    #center = 93 # arbitrary
+    #r = 1   # arbitrary
+    #with open('conv_objects.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
+    #    pickle.dump([filters, adj_mtx, vals_list, coords, faces, center, r, stride], f)
+
+    a_dims = a.shape
+    strided_mesh = mesh_strider_batch(adj_mtx, vals_list, coords, faces, center, r, stride)
+    mdi = MeshDataIterator(strided_mesh)
+
+    out = []    #TODO: Consider dividing by norm (why did we do that in the original?)
+    for i in range(a_dims[1]):
+        filters = []
+        filter = a[:, i, :]
+        mdi.reset()
+        while mdi.has_next():
+            patch = mdi.next()
+            try:
+                temp = npo.einsum('ij,ij->i', filter, patch)
+            except:
+                temp = npo.einsum('ij,ij->i', filter._value, patch)
+                # patch = temp_b[ctr, j, k, :, :, :]
+                # temp = npo.einsum('ijk,ijk->', filter, patch)
+            filters.append(temp)
+        if len(out) == 0:
+            out = npo.array([filters])
+        else:
+            out = npo.vstack((out, [filters]))
+
+    #out = out.reshape((a_dims[1], b.shape[0], b.shape[1], b.shape[2]))
+    out = np.swapaxes(out, 0, 1)
+    return out
+
+    # conv_arr = []
+    # for vals in vals_list:
+    #     depth_arr = []
+    #     for c in range(f_count):
+    #         strided_mesh = mesh_strider(adj_mtx, vals[c], coords, faces, center, r, stride)
+    #         filter_arr = []
+    #         for f in filters[c]:
+    #             row = []
+    #             for p in strided_mesh:
+    #                 p = np.array(p)
+    #                 try:
+    #                     p = p / LA.norm(p)
+    #                 except:
+    #                     print("boo")
+    #                     x = [i._value for i in p]
+    #                     try:
+    #                         p = x / LA.norm(x)
+    #                     except:
+    #                         y = [i._value for i in x]
+    #                         try:
+    #                             p = y / LA.norm(y)
+    #                         except:
+    #                             print("boo")
+    #                 try:
+    #                     #temp = np.einsum('i,i->', f, p)
+    #                     temp = np.dot(f, p)
+    #                     row.append(temp)
+    #                 except:
+    #                     #temp = np.einsum('i,i->', f[:len(p)], p)
+    #                     temp = np.dot(f[:len(p)], p)
+    #                     row.append(temp)
+    #             if len(filter_arr) == 0:
+    #                 filter_arr = np.array([row])
+    #                 row = []
+    #             else:
+    #                 filter_arr = np.vstack((filter_arr, [row]))
+    #                 row = []
+    #         if len(depth_arr) == 0:
+    #             depth_arr = np.array([filter_arr])
+    #             filter_arr = []
+    #         else:
+    #             depth_arr = np.vstack((depth_arr, [filter_arr]))
+    #             filter_arr = []
+    #     if len(conv_arr) == 0:
+    #         conv_arr = np.array([depth_arr])
+    #         depth_arr = []
+    #     else:
+    #         conv_arr = np.vstack((conv_arr, [depth_arr]))
+    #         depth_arr = []
+    # conv_arr = np.sum(conv_arr, axis=1)
+    # return conv_arr
+
+
+def mesh_convolve_tensor(a, adj_mtx, vals_list, coords, faces, center, r, stride):
+    """
+    Strides the mesh and applies a convolution to the patches
+    :param filters: list of filters
+    :param adj_mtx: adjacency matrix
+    :param coords: coordinates of each vertex
+    :return: result of the convolution operation
+    """
+    #center = 93 # arbitrary
+    #r = 1   # arbitrary
+    #with open('conv_objects.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
+    #    pickle.dump([filters, adj_mtx, vals_list, coords, faces, center, r, stride], f)
+
+    strided_mesh = mesh_strider_batch(adj_mtx, vals_list, coords, faces, center, r, stride)
+    try:
+        out = npo.einsum(a, [0, 1, 2], strided_mesh, [3, 4, 2])
+    except:
+        a = a._value
+        out = npo.einsum(a, [0, 1, 2], strided_mesh, [3, 4, 2])
+    #out = np.squeeze(out)
+    out = out[0]
+    out = np.swapaxes(out, 0, 1)
+    return out
+
+
+class MeshDataIterator:     # TODO: maybe not copy the array but access elements inplace?
+    def __init__(self, b):
+        self.ix = 0
+        self.arr = b
+        self.length = len(self.arr)
+
+    def has_next(self):
+        return False if self.ix >= self.length else True
+
+    def next(self):
+        #try:
+        item = self.arr[self.ix]
+        # except:
+        #     print("boo")
+        self.ix += 1
+        return item
+
+    def reset(self):
+        self.ix = 0

@@ -6,7 +6,6 @@ from scipy import sparse
 def generate(n_ex=5000):
     verts, faces, adj_mtx = load_sphere.load(2)
     #adj_mtx, _, _ = mesh_traversal_debug.create_adj_mtx(np.array(verts), np.array(faces), is_sparse=True)
-    print(sparse.issparse(adj_mtx))
 
     n_patterns = 5
     n_data = n_ex
@@ -46,5 +45,5 @@ def generate(n_ex=5000):
     test_data = test[:, :162]
     test_labels = test[:, 162]
 
-    return train_data, train_labels, test_data, test_labels, adj_mtx, mesh_vals, verts, faces
+    return train_data, train_labels, test_data, test_labels, adj_mtx, mesh_data, verts, faces
 

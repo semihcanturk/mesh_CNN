@@ -12,6 +12,8 @@ from conv import convolution_impl
 #import mnist
 import gzip, pickle
 import mnist
+import time
+import datetime
 from mesh import generate_square_data
 
 #mnist.init()
@@ -86,8 +88,12 @@ class conv_layer(object):
         # Output dimensions: [data, color_out, y, x]
         params = self.parser.get(param_vector, 'params')
         biases = self.parser.get(param_vector, 'biases')
-        #conv = convolution_impl.convolve_seq(params, inputs)
-        conv = convolve(inputs, params, axes=([2, 3], [2, 3]), dot_axes = ([1], [0]), mode='valid')
+        conv = convolution_impl.convolve_seq_tensor(params, inputs)
+        #conv = convolve(inputs, params, axes=([2, 3], [2, 3]), dot_axes = ([1], [0]), mode='valid')
+
+        #with open('CONV_ORG.pkl', 'wb') as f:
+        #    pickle.dump(conv, f)
+
         return conv + biases
 
     def build_weights_dict(self, input_shape):
@@ -170,7 +176,12 @@ if __name__ == '__main__':
     learning_rate = 1e-3
     momentum = 0.9
     batch_size = 256
-    num_epochs = 50
+    num_epochs = 3
+
+    #foo1 = pickle.load(open("CONV_ORG.pkl", "rb"))
+    #foo2 = pickle.load(open("CONV_TENSOR.pkl", "rb"))
+    #print(np.allclose(foo1, foo2))
+    #x = foo1 - foo2
 
     # Load and process MNIST data
     print("Loading training data...")
@@ -241,7 +252,7 @@ if __name__ == '__main__':
     loss_grad = grad(loss_fun)
 
     # Initialize weights
-    rs = npr.RandomState()
+    rs = npr.RandomState(seed=1234)
     W = rs.randn(N_weights) * param_scale
 
     # Check the gradients numerically, just to be safe
@@ -256,13 +267,16 @@ if __name__ == '__main__':
     # Train with sgd
     batch_idxs = make_batches(N_data, batch_size)
     cur_dir = np.zeros(N_weights)
-
+    # print(grad_W)
+    stime = time.time()
     for epoch in range(num_epochs):
         print_perf(epoch, W)
+        if epoch == num_epochs - 1:
+            etime = time.time()
+            print(etime-stime)
         for idxs in batch_idxs:
             aaa = train_images[idxs]
             bbb = train_labels[idxs]
             grad_W = loss_grad(W, train_images[idxs], train_labels[idxs])
-            #print(grad_W)
             cur_dir = momentum * cur_dir + (1.0 - momentum) * grad_W
             W -= learning_rate * cur_dir

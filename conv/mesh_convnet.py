@@ -97,9 +97,7 @@ class conv_layer(object):
             adj_mtx = m0
             coords = np.array(v0)
             faces = f0
-        conv = mesh_traversal.mesh_convolve(params, adj_mtx, inputs, coords, faces, center, r, stride)
-        #conv = convolve(inputs, params, axes=([2, 3], [2, 3]), dot_axes = ([1], [0]), mode='valid')
-        #conv.reshape(1, 6, 162, 1)
+        conv = mesh_traversal.mesh_convolve_tensor(params, adj_mtx, inputs, coords, faces, center, r, stride)
         return conv + biases
 
     def build_weights_dict(self, input_shape):
@@ -233,10 +231,10 @@ if __name__ == '__main__':
 
     # Training parameters
     param_scale = 0.9
-    learning_rate = 1e-4
+    learning_rate = 1e-4 * 5
     momentum = 0.9
     batch_size = 150
-    num_epochs = 100
+    num_epochs = 3
 
     # Load and process mesh data
     print("Loading training data...")
@@ -255,7 +253,7 @@ if __name__ == '__main__':
     test_images = np.expand_dims(test_images, axis=1) / 255
 
     order = mesh_traversal.traverse_mesh(coords, faces, center, stride)  # list of vertices, ordered
-    rem = set(range(mesh_vals.shape[0])).difference(set(order))
+    rem = set(range(len(mesh_vals))).difference(set(order))
     order = order + list(rem)
 
     o2 = order
@@ -275,7 +273,7 @@ if __name__ == '__main__':
     loss_grad = grad(loss_fun)
 
     # Initialize weights
-    rs = npr.RandomState()
+    rs = npr.RandomState(14)    # fix seed
     W = rs.randn(N_weights) * param_scale
 
     # Check the gradients numerically, just to be safe
@@ -295,11 +293,12 @@ if __name__ == '__main__':
     #sdate = datetime.datetime.fromtimestamp(start).strftime('%Y-%m-%d %H:%M:%S')
     #print(sdate)
 
+    stime = time.time()
     for epoch in range(num_epochs):
-        etime = time.time()
-        edate = datetime.datetime.fromtimestamp(etime).strftime('%Y-%m-%d %H:%M:%S')
-        print(edate)
         print_perf(epoch, W)
+        if epoch == num_epochs - 1:
+            etime = time.time()
+            print(etime-stime)
         for idxs in batch_idxs:
             grad_W = loss_grad(W, train_images[idxs], train_labels[idxs])
             cur_dir = momentum * cur_dir + (1.0 - momentum) * grad_W

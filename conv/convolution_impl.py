@@ -9,6 +9,8 @@ from future.utils import iteritems
 import mnist
 from conv import hips_convnet
 import pickle
+import time
+
 
 def as_strided_seq(b, patch, stride):
     # b is array to be strided
@@ -123,6 +125,110 @@ def convolve_seq(a, b):
             out = npo.vstack((out, [filters]))
             filters = []
     return out
+
+
+def convolve_seq_iter(a, b):
+    a_dims = a.shape
+    b = as_strided_seq(b, 5, 1)  # arbitrary patch & stride for now
+    di = DataIterator(b)
+
+    for ctr in range(a_dims[1]):
+        if isinstance(a, np.ndarray):
+            temp = a[0][ctr]
+            tt = npo.flipud(temp)
+            tt = npo.fliplr(tt)
+            a[0][ctr] = tt
+        else:
+            a = a._value
+            temp = a[0][ctr]
+            tt = npo.flipud(temp)
+            tt = npo.fliplr(tt)
+            a[0][ctr] = tt
+
+    out = []
+    for i in range(a_dims[1]):
+        filters = []
+        filter = a[:, i, :, :]
+        di.reset()
+        while di.has_next():
+            patch = di.next()
+            try:
+                temp = npo.einsum('ijk,ijk->', filter, patch)
+            except:
+                print("boo")
+                #patch = temp_b[ctr, j, k, :, :, :]
+                #temp = npo.einsum('ijk,ijk->', filter, patch)
+            filters.append(temp)
+        if len(out) == 0:
+            out = npo.array([filters])
+        else:
+            out = npo.vstack((out, [filters]))
+
+    out = out.reshape((a_dims[1], b.shape[0], b.shape[1], b.shape[2]))
+    out = np.swapaxes(out, 0, 1)
+    return out
+
+
+def convolve_seq_tensor(a, b):
+    a_dims = a.shape
+    for ctr in range(a_dims[1]):
+        if isinstance(a, np.ndarray):
+            temp = a[0][ctr]
+            tt = npo.flipud(temp)
+            tt = npo.fliplr(tt)
+            a[0][ctr] = tt
+        else:
+            a = a._value
+            temp = a[0][ctr]
+            tt = npo.flipud(temp)
+            tt = npo.fliplr(tt)
+            a[0][ctr] = tt
+
+    check1 = time.time()
+    b = as_strided_seq(b, 5, 1)  # arbitrary patch & stride for now
+    check2 = time.time()
+    b = np.moveaxis(b, [0, 1, 2, 3, 4, 5], [0, 3, 4, 5, 1, 2])
+    b = np.moveaxis(b, 5, 1)
+    try:
+        out = npo.einsum(a, [12, 1, 10, 11], b, [4, 12, 10, 11, 8, 9])
+        #out = npo.einsum(a, [12, 1, 10, 11], b, [4, 8, 9, 12, 10, 11])
+        out = np.swapaxes(out, 0, 1)
+    except:
+        a = a._value
+        out = npo.einsum(a, [12, 1, 10, 11], b, [4, 12, 10, 11, 8, 9])
+        out = np.swapaxes(out, 0, 1)
+    check3 = time.time()
+    print("STRIDE TIME")
+    print(check2 - check1)
+    print("EINSUM TIME")
+    print(check3 - check2)
+    return out
+
+
+class DataIterator:     # TODO: maybe not copy the array but access elements inplace?
+    def __init__(self, b):
+        self.ix = 0
+        self.arr = []
+        dims = b.shape
+        self.length = dims[0] * dims[1] * dims[2]
+        for i in range(dims[0]):
+            for j in range(dims[1]):
+                for k in range(dims[2]):
+                    self.arr.append(b[i, j, k, :, :, :])
+
+    def has_next(self):
+        return False if self.ix >= self.length else True
+
+    def next(self):
+        try:
+            item = self.arr[self.ix]
+        except:
+            print("boo")
+        self.ix += 1
+        return item
+
+    def reset(self):
+        self.ix = 0
 
 
 def mnist_example():
