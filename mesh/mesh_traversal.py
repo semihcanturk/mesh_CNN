@@ -9,6 +9,7 @@ from numpy import genfromtxt
 import time
 from scipy import sparse
 import itertools
+import functools
 
 
 # API
@@ -335,59 +336,65 @@ def find_region(adj_mtx, mesh_vals, coords, vertex, r, neighs=False):
     :param r: radius of region in terms of depth
     :return: traversal list of the vertices in the region
     """
-    verts = list()
 
-    # level_0
-    verts.append(vertex)
-    v = vertex
+    @functools.lru_cache()
+    def get_neighs(vertex, r):
+        verts = list()
 
-    # find closest point in level 1
-    if sparse.issparse(adj_mtx):
-        nz = adj_mtx.tolil().rows
-        ix_list = nz[v]
-    else:
-        row = adj_mtx[v]
-        ix_list = np.nonzero(row)
-        ix_list = ix_list[0]
+        # level_0
+        verts.append(vertex)
+        v = vertex
 
-    dists = []
-    for j in ix_list:
-        d = get_dist(coords, v, j)
-        dists.append(d)
-    ix_min = ix_list[dists.index(min(dists))]
-    closest_ix = ix_min
+        # find closest point in level 1
+        if sparse.issparse(adj_mtx):
+            nz = adj_mtx.tolil().rows
+            ix_list = nz[v]
+        else:
+            row = adj_mtx[v]
+            ix_list = np.nonzero(row)
+            ix_list = ix_list[0]
 
-    # levels_>=1
-    for i in range(1, r + 1):
-        # this is the closest vertex of the new level
-        # find the ordering of the level
-        arr = get_order(adj_mtx, coords, ix_list, closest_ix, verts)
-        verts = verts + arr
-        # get next level: for each in ix_list, get neighbors that are not in <verts>, then add them to the new list
-        next_list = []
+        dists = []
         for j in ix_list:
-            if sparse.issparse(adj_mtx):
-                new_row = nz[j]
-            else:
-                new_row = adj_mtx[j]
-                new_row = np.nonzero(new_row)
-                new_row = new_row[0]
+            d = get_dist(coords, v, j)
+            dists.append(d)
+        ix_min = ix_list[dists.index(min(dists))]
+        closest_ix = ix_min
 
-            for k in new_row:
-                if k not in verts:
-                    next_list.append(k)
-        next_list = list(set(next_list))
+        # levels_>=1
+        for i in range(1, r + 1):
+            # this is the closest vertex of the new level
+            # find the ordering of the level
+            arr = get_order(adj_mtx, coords, ix_list, closest_ix, verts)
+            verts = verts + arr
+            # get next level: for each in ix_list, get neighbors that are not in <verts>, then add them to the new list
+            next_list = []
+            for j in ix_list:
+                if sparse.issparse(adj_mtx):
+                    new_row = nz[j]
+                else:
+                    new_row = adj_mtx[j]
+                    new_row = np.nonzero(new_row)
+                    new_row = new_row[0]
 
-        # find starting point of next level using line eq
-        c1 = coords[vertex]
-        c2 = coords[closest_ix]
-        line_dists = []
-        for j in next_list:
-            c3 = coords[j]
-            line_dist = LA.norm(np.cross(c2 - c1, c1 - c3)) / LA.norm(c2 - c1)  # calculate distance to line
-            line_dists.append(line_dist)
-        ix_list = next_list
-        closest_ix = next_list[line_dists.index(min(line_dists))]
+                for k in new_row:
+                    if k not in verts:
+                        next_list.append(k)
+            next_list = list(set(next_list))
+
+            # find starting point of next level using line eq
+            c1 = coords[vertex]
+            c2 = coords[closest_ix]
+            line_dists = []
+            for j in next_list:
+                c3 = coords[j]
+                line_dist = LA.norm(np.cross(c2 - c1, c1 - c3)) / LA.norm(c2 - c1)  # calculate distance to line
+                line_dists.append(line_dist)
+            ix_list = next_list
+            closest_ix = next_list[line_dists.index(min(line_dists))]
+        return verts
+
+    verts = get_neighs(vertex, r)
 
     vals = list()
     for i in verts:
@@ -395,7 +402,6 @@ def find_region(adj_mtx, mesh_vals, coords, vertex, r, neighs=False):
             vals.append(mesh_vals[0, i])
         except:
             vals.append(mesh_vals[i])
-
 
     if neighs:
         return vals, verts
@@ -495,12 +501,14 @@ def mesh_strider_batch(adj_mtx, vals_list, coords, faces, center, r, stride):
     """
     out = []
     ctr = 0
+
+    vertices = traverse_mesh(coords, faces, center, stride)  # list of vertices, ordered
+    rem = set(range(vals_list[0].shape[1])).difference(set(vertices))
+    vertices = vertices + list(rem)
+
     for mesh_vals in vals_list:
         ctr = ctr + 1
         patches = []
-        vertices = traverse_mesh(coords, faces, center, stride)   # list of vertices, ordered
-        rem = set(range(mesh_vals.shape[1])).difference(set(vertices))
-        vertices = vertices + list(rem)
         for v in vertices:
             vals, neigh = find_region(adj_mtx, mesh_vals, coords, v, r, neighs=True)
             patches.append(np.array(vals))
@@ -687,6 +695,35 @@ def mesh_convolve_tensor(a, adj_mtx, vals_list, coords, faces, center, r, stride
     #    pickle.dump([filters, adj_mtx, vals_list, coords, faces, center, r, stride], f)
 
     strided_mesh = mesh_strider_batch(adj_mtx, vals_list, coords, faces, center, r, stride)
+    try:
+        out = npo.einsum(a, [0, 1, 2], strided_mesh, [3, 4, 2])
+    except:
+        try:
+            a = a._value
+            out = npo.einsum(a, [0, 1, 2], strided_mesh, [3, 4, 2])
+        except:
+            strided_mesh = strided_mesh._value
+            out = npo.einsum(a, [0, 1, 2], strided_mesh, [3, 4, 2])
+
+    #out = np.squeeze(out)
+    out = out[0]
+    out = np.swapaxes(out, 0, 1)
+    return out
+
+
+def mesh_convolve_tensorized(a, strided_mesh):
+    """
+    Strides the mesh and applies a convolution to the patches
+    :param filters: list of filters
+    :param adj_mtx: adjacency matrix
+    :param coords: coordinates of each vertex
+    :return: result of the convolution operation
+    """
+    #center = 93 # arbitrary
+    #r = 1   # arbitrary
+    #with open('conv_objects.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
+    #    pickle.dump([filters, adj_mtx, vals_list, coords, faces, center, r, stride], f)
+
     try:
         out = npo.einsum(a, [0, 1, 2], strided_mesh, [3, 4, 2])
     except:

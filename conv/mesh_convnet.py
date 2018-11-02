@@ -12,6 +12,7 @@ from mesh import mesh_traversal, generate_sphere_data, load_sphere
 import mnist
 import time
 import datetime
+import pickle
 
 center = 0
 r = 1
@@ -72,6 +73,35 @@ def make_nn_funs(input_shape, layer_specs, L2_reg):
         return np.mean(np.argmax(T, axis=1) != np.argmax(pred_fun(W_vect, X), axis=1))
 
     return parser.N, predictions, loss, frac_err
+
+class init_conv_layer(object):
+    def __init__(self, kernel_shape, num_filters):
+        self.kernel_shape = kernel_shape
+        self.num_filters = num_filters
+
+    def forward_pass(self, inputs, param_vector):
+        # Input dimensions:  [data, color_in, y, x]
+        # Params dimensions: [color_in, color_out, y, x]
+        # Output dimensions: [data, color_out, y, x]
+        params = self.parser.get(param_vector, 'params')    # filters
+        biases = self.parser.get(param_vector, 'biases')
+        biases = biases.reshape(biases.shape[0], biases.shape[1], 1)
+
+        conv = mesh_traversal.mesh_convolve_tensorized(params, inputs)
+        return conv + biases
+
+    def build_weights_dict(self, input_shape):
+        # Input shape : [color, y, x] (don't need to know number of data yet)
+        self.parser = WeightsParser()
+        self.parser.add_weights('params', (input_shape[0], self.num_filters)
+                                          + self.kernel_shape)
+        self.parser.add_weights('biases', (1, self.num_filters, 1, 1))
+        output_shape = (self.num_filters,) + \
+                       self.conv_output_shape(input_shape[1:], self.kernel_shape)
+        return self.parser.N, output_shape
+
+    def conv_output_shape(self, A, B):
+        return A[0],
 
 class conv_layer(object):
     def __init__(self, kernel_shape, num_filters):
@@ -220,21 +250,21 @@ class softmax_layer(full_layer):
 if __name__ == '__main__':
     # Network parameters
     L2_reg = 1.0
-    input_shape = (1, 162,)
-    layer_specs = [conv_layer((7,), 1),
+    input_shape = (1, 162, 7,)
+    layer_specs = [init_conv_layer((7,), 6),
                    maxpool_layer((6,)),
-                   #conv_layer((7,), 5),
+                   #conv_layer((7,), 2),
                    #maxpool_layer((6,)),
                    tanh_layer(120),
                    #tanh_layer(84),
-                   softmax_layer(2)]
+                   softmax_layer(3)]
 
     # Training parameters
     param_scale = 0.9
-    learning_rate = 1e-4 * 5
+    learning_rate = 1e-4 * 8
     momentum = 0.9
     batch_size = 150
-    num_epochs = 3
+    num_epochs = 50
 
     # Load and process mesh data
     print("Loading training data...")
@@ -246,11 +276,29 @@ if __name__ == '__main__':
 
     matrices = [m0, m1, m2]
 
-    train_images, train_labels, test_images, test_labels, \
-    adj_mtx, mesh_vals, coords, faces = generate_sphere_data.generate(1000)
-    coords = np.array(coords)
-    train_images = np.expand_dims(train_images, axis=1) / 255
-    test_images = np.expand_dims(test_images, axis=1) / 255
+    try:
+        train_batch, train_labels, test_batch, test_labels, \
+        adj_mtx, mesh_vals, coords, faces = pickle.load(open("data.pickle", "rb"))
+    except (OSError, IOError) as e:
+        train_images, train_labels, test_images, test_labels, \
+        adj_mtx, mesh_vals, coords, faces = generate_sphere_data.generate(1000)
+        coords = np.array(coords)
+
+        train_images = np.expand_dims(train_images, axis=1) / 255
+        test_images = np.expand_dims(test_images, axis=1) / 255
+
+        train_batch = mesh_traversal.mesh_strider_batch(adj_mtx, train_images, coords, faces, center, r, stride)
+        test_batch = mesh_traversal.mesh_strider_batch(adj_mtx, test_images, coords, faces, center, r, stride)
+
+        pickle.dump((train_batch, train_labels, test_batch, test_labels,
+                     adj_mtx, mesh_vals, coords, faces), open("data.pickle", "wb"))
+
+    #train_images, train_labels, test_images, test_labels, \
+    #adj_mtx, mesh_vals, coords, faces = generate_sphere_data.generate(1000)
+
+
+    stime0 = time.time()
+
 
     order = mesh_traversal.traverse_mesh(coords, faces, center, stride)  # list of vertices, ordered
     rem = set(range(len(mesh_vals))).difference(set(order))
@@ -264,9 +312,9 @@ if __name__ == '__main__':
     rem0 = set(range(12)).difference(set(o0))
     o0 = o0 + list(rem0)
 
-    train_labels = one_hot(train_labels, 2)
-    test_labels = one_hot(test_labels, 2)
-    N_data = train_images.shape[0]
+    train_labels = one_hot(train_labels, 3)
+    test_labels = one_hot(test_labels, 3)
+    N_data = train_batch.shape[0]
 
     # Make neural net functions
     N_weights, pred_fun, loss_fun, frac_err = make_nn_funs(input_shape, layer_specs, L2_reg)
@@ -281,8 +329,8 @@ if __name__ == '__main__':
 
     print("    Epoch      |    Train err  |   Test error  ")
     def print_perf(epoch, W):
-        test_perf  = frac_err(W, test_images, test_labels)
-        train_perf = frac_err(W, train_images, train_labels)
+        test_perf  = frac_err(W, test_batch, test_labels)
+        train_perf = frac_err(W, train_batch, train_labels)
         print("{0:15}|{1:15}|{2:15}".format(epoch, train_perf, test_perf))
 
     # Train with sgd
@@ -294,12 +342,13 @@ if __name__ == '__main__':
     #print(sdate)
 
     stime = time.time()
+    print(stime-stime0)
     for epoch in range(num_epochs):
         print_perf(epoch, W)
         if epoch == num_epochs - 1:
             etime = time.time()
             print(etime-stime)
         for idxs in batch_idxs:
-            grad_W = loss_grad(W, train_images[idxs], train_labels[idxs])
+            grad_W = loss_grad(W, train_batch[idxs], train_labels[idxs])
             cur_dir = momentum * cur_dir + (1.0 - momentum) * grad_W
             W -= learning_rate * cur_dir

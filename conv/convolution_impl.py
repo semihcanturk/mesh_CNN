@@ -6,8 +6,6 @@ import autograd.scipy.signal
 
 from numpy.lib.stride_tricks import as_strided
 from future.utils import iteritems
-import mnist
-from conv import hips_convnet
 import pickle
 import time
 
