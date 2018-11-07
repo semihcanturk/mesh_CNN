@@ -11,8 +11,12 @@ from autograd import grad
 from mesh import mesh_traversal, generate_sphere_data, load_sphere
 import mnist
 import time
+import math
 import datetime
 import pickle
+
+convolve = autograd.scipy.signal.convolve
+from mesh import load_mesquare
 
 center = 0
 r = 1
@@ -112,22 +116,17 @@ class conv_layer(object):
         # Input dimensions:  [data, color_in, y, x]
         # Params dimensions: [color_in, color_out, y, x]
         # Output dimensions: [data, color_out, y, x]
-        params = self.parser.get(param_vector, 'params')    # filters
+        params = self.parser.get(param_vector, 'params')
         biases = self.parser.get(param_vector, 'biases')
         biases = biases.reshape(biases.shape[0], biases.shape[1], 1)
-        if inputs.shape[2] == 162:
-            adj_mtx = m2
-            coords = np.array(v2)
-            faces = f2
-        elif inputs.shape[2] == 42:
-            adj_mtx = m1
-            coords = np.array(v1)
-            faces = f1
-        elif inputs.shape[2] == 12:
-            adj_mtx = m0
-            coords = np.array(v0)
-            faces = f0
-        conv = mesh_traversal.mesh_convolve_tensor(params, adj_mtx, inputs, coords, faces, center, r, stride)
+
+        a = int(math.sqrt(inputs.shape[2]))
+        b = int(math.sqrt(params.shape[2]))
+        inputs_temp = inputs.reshape(inputs.shape[0], inputs.shape[1], a, a)
+        params_temp = params.reshape(params.shape[0], params.shape[1], b, b)
+
+        conv = convolve(inputs_temp, params_temp, axes=([2, 3], [2, 3]), dot_axes = ([1], [0]), mode='valid')
+        conv = conv.reshape(conv.shape[0], conv.shape[1], conv.shape[2] * conv.shape[2])
         return conv + biases
 
     def build_weights_dict(self, input_shape):
@@ -136,8 +135,11 @@ class conv_layer(object):
         self.parser.add_weights('params', (input_shape[0], self.num_filters)
                                           + self.kernel_shape)
         self.parser.add_weights('biases', (1, self.num_filters, 1, 1))
+
+        i1 = int(math.sqrt(input_shape[1]))
+        new_i1 = (i1 - 4) ** 2
         output_shape = (self.num_filters,) + \
-                       self.conv_output_shape(input_shape[1:], self.kernel_shape)
+                       self.conv_output_shape([new_i1], self.kernel_shape)
         return self.parser.N, output_shape
 
     def conv_output_shape(self, A, B):
@@ -153,45 +155,48 @@ class maxpool_layer(object):
         for i in [0]:
             assert input_shape[i + 1] % self.pool_shape[i] == 0, \
                 "maxpool shape should tile input exactly"
-            output_shape[i + 1] = int((input_shape[i + 1] + 6) / (self.pool_shape[i]-2))
+            output_shape[i + 1] = int(input_shape[i + 1] / self.pool_shape[i])
         return 0, output_shape
 
     def forward_pass(self, inputs, param_vector):
-        if inputs.shape[2] == 162:
-            adj_mtx = m2
-            coords = np.array(v2)
-            order = o2
-        elif inputs.shape[2] == 42:
-            adj_mtx = m1
-            coords = np.array(v1)
-            order = o1
-        elif inputs.shape[2] ==12:
-            adj_mtx = m0
-            coords = np.array(v0)
-            order = o0
-        new_shape = inputs.shape[:2]
-        for i in [0]:
-            pool_width = self.pool_shape[i]
-            img_width = inputs.shape[i + 2]
-            new_dim = int((img_width + 6) / (pool_width-2))
-            new_shape += (new_dim,)
-        result = None
-        for i in range(new_dim):
-            n = mesh_traversal.get_neighs(adj_mtx, coords, i, 1)
-            nlist = None
-            for neighbor in n:
-                x = inputs[:, :, order.index(neighbor)]
-                if nlist is None:
-                    nlist = np.expand_dims(x, axis=2)
-                else:
-                    x = np.expand_dims(x, axis=2)
-                    nlist = np.concatenate((nlist, x), axis=2)
-            subresult = np.mean(nlist, axis=2)
-            if result is None:
-                result = np.expand_dims(subresult, axis=2)
-            else:
-                subresult = np.expand_dims(subresult, axis=2)
-                result = np.concatenate((result, subresult), axis=2)
+        n = mesh_traversal.get_neighs_sq(inputs)
+        result = np.array(n)
+        result = np.moveaxis(result, 0, 2)
+
+        # new_shape = inputs.shape[:2]
+        # for i in [0]:
+        #     pool_width = self.pool_shape[i]
+        #     img_width = inputs.shape[i + 2]
+        #     new_dim = int(img_width / (pool_width))
+        #     new_shape += (new_dim,)
+        # result = None
+        # for i in range(new_dim):
+        #
+        #     if new_shape[2] == 16:
+        #         #n = mesh_traversal.get_neighs(adj_mtx_2, coords_2, i, 1)
+        #         n = mesh_traversal.get_neighs_sq(inputs)
+        #     else:
+        #         #n = mesh_traversal.get_neighs(adj_mtx, coords, i, 1)
+        #         n = mesh_traversal.get_neighs_sq(inputs)
+        #
+        #     nlist = None
+        #     for neighbor in n:
+        #         #TODO: fix by applying small (8x8=64 vertex) order
+        #         if new_shape[2] == 16:
+        #             x = inputs[:, :, o2.index(neighbor)]
+        #         else:
+        #             x = inputs[:, :, order.index(neighbor)]
+        #         if nlist is None:
+        #             nlist = np.expand_dims(x, axis=2)
+        #         else:
+        #             x = np.expand_dims(x, axis=2)
+        #             nlist = np.concatenate((nlist, x), axis=2)
+        #     subresult = np.max(nlist, axis=2)
+        #     if result is None:
+        #         result = np.expand_dims(subresult, axis=2)
+        #     else:
+        #         subresult = np.expand_dims(subresult, axis=2)
+        #         result = np.concatenate((result, subresult), axis=2)
         return result
 
 class full_layer(object):
@@ -215,32 +220,7 @@ class full_layer(object):
 
 class tanh_layer(full_layer):
     def nonlinearity(self, x):
-        try:
-            return np.tanh(x)
-        except:
-            x = np.array(x)
-            s = x.shape
-            fin = np.empty([s[0], s[1]])
-            for i in range(s[0]):
-                for j in range(s[1]):
-                    val_temp = x._value[i][j]
-                    if isinstance(val_temp, np.float):
-                        val = val_temp
-                    elif isinstance(val_temp._value, np.float):
-                        val = val_temp._value
-                    elif isinstance(val_temp._value._value, np.float):
-                        val = val_temp._value._value
-                    else:
-                        if i == 0:
-                            val = val_temp._value._value._value._value
-                        else:
-                            val = val_temp._value._value._value._value._value._value._value._value
-                    fin[i][j] = val
-
-            #end = time.time()
-            #print(end-start)
-            #print("boo")
-            return np.tanh(fin)
+        return np.tanh(x)
 
 class softmax_layer(full_layer):
     def nonlinearity(self, x):
@@ -250,70 +230,43 @@ class softmax_layer(full_layer):
 if __name__ == '__main__':
     # Network parameters
     L2_reg = 1.0
-    input_shape = (1, 162, 7,)
-    layer_specs = [init_conv_layer((7,), 6),
-                   maxpool_layer((6,)),
-                   #conv_layer((7,), 2),
-                   #maxpool_layer((6,)),
+    input_shape = (1, 576, 25,)
+    layer_specs = [init_conv_layer((25,), 6),
+                   maxpool_layer((4,)),
+                   conv_layer((25,), 16),
+                   maxpool_layer((4,)),
                    tanh_layer(120),
-                   #tanh_layer(84),
-                   softmax_layer(3)]
+                   tanh_layer(84),
+                   softmax_layer(10)]
 
     # Training parameters
-    param_scale = 0.9
-    learning_rate = 1e-4 * 8
+    param_scale = 0.1
+    learning_rate = 1e-3
     momentum = 0.9
     batch_size = 150
     num_epochs = 50
 
-    # Load and process mesh data
-    print("Loading training data...")
-    one_hot = lambda x, K: np.array(x[:,None] == np.arange(K)[None, :], dtype=int)
+    init_rate = learning_rate
 
-    v0, f0, m0 = load_sphere.load(0)
-    v1, f1, m1 = load_sphere.load(1)
-    v2, f2, m2 = load_sphere.load(2)
+    add_color_channel = lambda x : x.reshape((x.shape[0], 1, x.shape[1], x.shape[2]))
+    one_hot = lambda x, K : np.array(x[:,None] == np.arange(K)[None, :], dtype=int)
 
-    matrices = [m0, m1, m2]
+    ##############
 
-    try:
-        train_batch, train_labels, test_batch, test_labels, \
-        adj_mtx, mesh_vals, coords, faces = pickle.load(open("data.pickle", "rb"))
-    except (OSError, IOError) as e:
-        train_images, train_labels, test_images, test_labels, \
-        adj_mtx, mesh_vals, coords, faces = generate_sphere_data.generate(1000)
-        coords = np.array(coords)
+    train_batch, train_labels, test_batch, test_labels, adj_mtx, coords = load_mesquare.load()
+    adj_mtx, _ = load_mesquare.create_mtx(28)  #TODO: check if correct
 
-        train_images = np.expand_dims(train_images, axis=1) / 255
-        test_images = np.expand_dims(test_images, axis=1) / 255
-
-        train_batch = mesh_traversal.mesh_strider_batch(adj_mtx, train_images, coords, faces, center, r, stride)
-        test_batch = mesh_traversal.mesh_strider_batch(adj_mtx, test_images, coords, faces, center, r, stride)
-
-        pickle.dump((train_batch, train_labels, test_batch, test_labels,
-                     adj_mtx, mesh_vals, coords, faces), open("data.pickle", "wb"))
-
-    #train_images, train_labels, test_images, test_labels, \
-    #adj_mtx, mesh_vals, coords, faces = generate_sphere_data.generate(1000)
-
-
-    stime0 = time.time()
-
-
-    order = mesh_traversal.traverse_mesh(coords, faces, center, stride)  # list of vertices, ordered
-    rem = set(range(len(mesh_vals))).difference(set(order))
+    order = mesh_traversal.traverse_mtx(adj_mtx, coords, center, stride)  # list of vertices, ordered
+    rem = set(range(28 * 28)).difference(set(order))
     order = order + list(rem)
 
-    o2 = order
-    o1 = mesh_traversal.traverse_mesh(np.array(v1), f1, center, stride)
-    rem1 = set(range(42)).difference(set(o1))
-    o1 = o1 + list(rem1)
-    o0 = mesh_traversal.traverse_mesh(np.array(v0), f0, center, stride)
-    rem0 = set(range(12)).difference(set(o0))
-    o0 = o0 + list(rem0)
+    adj_mtx_2, coords_2 = load_mesquare.create_mtx(8)
+    o2 = mesh_traversal.traverse_mtx(adj_mtx_2, coords_2, center, stride)
+    rem2 = set(range(8 * 8)).difference(set(o2))
+    o2 = o2 + list(rem2)
 
-    train_labels = one_hot(train_labels, 3)
-    test_labels = one_hot(test_labels, 3)
+    train_labels = one_hot(train_labels, 10)
+    test_labels = one_hot(test_labels, 10)
     N_data = train_batch.shape[0]
 
     # Make neural net functions
@@ -342,13 +295,17 @@ if __name__ == '__main__':
     #print(sdate)
 
     stime = time.time()
-    print(stime-stime0)
     for epoch in range(num_epochs):
         print_perf(epoch, W)
+
+        learning_rate = init_rate / (1 + epoch/5)
+
         if epoch == num_epochs - 1:
             etime = time.time()
             print(etime-stime)
         for idxs in batch_idxs:
-            grad_W = loss_grad(W, train_batch[idxs], train_labels[idxs])
+            t1 = train_batch[idxs]
+            t2 = train_labels[idxs]
+            grad_W = loss_grad(W, t1, t2)
             cur_dir = momentum * cur_dir + (1.0 - momentum) * grad_W
             W -= learning_rate * cur_dir

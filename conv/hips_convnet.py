@@ -110,8 +110,8 @@ class conv_layer(object):
 
             params = a
 
-        conv = convolution_impl.convolve_seq_tensor(params, inputs)
-        #conv = convolve(inputs, params, axes=([2, 3], [2, 3]), dot_axes = ([1], [0]), mode='valid')
+        #conv = convolution_impl.convolve_seq_tensor(params, inputs)
+        conv = convolve(inputs, params, axes=([2, 3], [2, 3]), dot_axes = ([1], [0]), mode='valid')
         if not isinstance(conv, np.ndarray):
             conv = conv._value
         if not isinstance(params, np.ndarray):
@@ -191,20 +191,20 @@ if __name__ == '__main__':
     # Network parameters
     L2_reg = 1.0
     input_shape = (1, 28, 28)
-    layer_specs = [#conv_layer((5, 5), 6),
+    layer_specs = [conv_layer((5, 5), 6),
                    #maxpool_layer((2, 2)),
                    conv_layer((5, 5), 16),
-                   maxpool_layer((2, 2)),
+                   #maxpool_layer((2, 2)),
                    tanh_layer(120),
                    tanh_layer(84),
-                   softmax_layer(2)]
+                   softmax_layer(10)]
 
     # Training parameters
-    param_scale = 0.7
+    param_scale = 0.1
     learning_rate = 1e-3
     momentum = 0.9
     batch_size = 256
-    num_epochs = 10
+    num_epochs = 50
 
     foo1 = []
 
@@ -229,36 +229,36 @@ if __name__ == '__main__':
     train_images = train_images.reshape((1000, 1, 28, 28)) / 255.0
     test_images = test_images.reshape((50, 1, 28, 28)) / 255.0
 
-    train_temp = np.zeros(len(train_labels))
-    test_temp = np.zeros(len(test_labels))
-    for i in range(len(train_labels)):
-        if train_labels[i] % 2 == 1:
-            temp = train_images[i][0]
-            #np.random.shuffle(temp)
-            #for j in temp:
-            #    np.random.shuffle(j)
-            for j in range(temp.shape[0]):
-                for k in range(temp.shape[1]):
-                    temp[j][k] = 0.5
-            train_images[i][0] = temp
-            train_temp[i] = 1
-    for i in range(len(test_labels)):
-        if test_labels[i] % 2 == 1:
-            temp = test_images[i][0]
-            #np.random.shuffle(temp)
-            #for j in temp:
-            #    np.random.shuffle(j)
-            for j in range(temp.shape[0]):
-                for k in range(temp.shape[1]):
-                    temp[j][k] = 0.5
-            test_images[i][0] = temp
-            test_temp[i] = 1
+    # train_temp = np.zeros(len(train_labels))
+    # test_temp = np.zeros(len(test_labels))
+    # for i in range(len(train_labels)):
+    #     if train_labels[i] % 2 == 1:
+    #         temp = train_images[i][0]
+    #         #np.random.shuffle(temp)
+    #         #for j in temp:
+    #         #    np.random.shuffle(j)
+    #         for j in range(temp.shape[0]):
+    #             for k in range(temp.shape[1]):
+    #                 temp[j][k] = 0.5
+    #         train_images[i][0] = temp
+    #         train_temp[i] = 1
+    # for i in range(len(test_labels)):
+    #     if test_labels[i] % 2 == 1:
+    #         temp = test_images[i][0]
+    #         #np.random.shuffle(temp)
+    #         #for j in temp:
+    #         #    np.random.shuffle(j)
+    #         for j in range(temp.shape[0]):
+    #             for k in range(temp.shape[1]):
+    #                 temp[j][k] = 0.5
+    #         test_images[i][0] = temp
+    #         test_temp[i] = 1
+    #
+    # train_labels = one_hot(train_temp, 2)
+    # test_labels = one_hot(test_temp, 2)
 
-    train_labels = one_hot(train_temp, 2)
-    test_labels = one_hot(test_temp, 2)
-
-    #train_labels = one_hot(train_labels, 10)
-    #test_labels = one_hot(test_labels, 10)
+    train_labels = one_hot(train_labels, 10)
+    test_labels = one_hot(test_labels, 10)
 
     ###############
 
