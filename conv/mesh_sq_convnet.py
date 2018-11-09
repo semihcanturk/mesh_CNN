@@ -159,44 +159,39 @@ class maxpool_layer(object):
         return 0, output_shape
 
     def forward_pass(self, inputs, param_vector):
-        n = mesh_traversal.get_neighs_sq(inputs)
-        result = np.array(n)
+
+        #n = mesh_traversal.get_neighs_sq(inputs)
+        #result = np.array(n)
+        #result = np.moveaxis(result, 0, 2)
+
+        # if inputs.shape[2] == 576:
+
+        new_shape = inputs.shape[:2]
+        for i in [0]:
+            pool_width = self.pool_shape[i]
+            img_width = inputs.shape[i + 2]
+            new_dim = int((np.sqrt(img_width) / np.sqrt(pool_width)))
+            new_shape += (new_dim * new_dim,)
+
+        result = []
+        for i in range(new_dim):
+            for j in range(new_dim):
+                x = (3 * j + 25) + 24 * 3 * i
+                n = mesh_traversal.get_neighs_sq2(adj_mtx, x)
+                a = inputs[:, :, n[0]]
+                b = inputs[:, :, n[1]]
+                c = inputs[:, :, n[2]]
+                d = inputs[:, :, n[3]]
+                e = inputs[:, :, n[4]]
+                f = inputs[:, :, n[5]]
+                g = inputs[:, :, n[6]]
+                h = inputs[:, :, n[7]]
+                temp = np.stack((a, b, c, d, e, f, g, h))
+                temp = np.amax(temp, axis=0)
+                result.append(temp)
+        result = np.stack(result)
         result = np.moveaxis(result, 0, 2)
 
-        # new_shape = inputs.shape[:2]
-        # for i in [0]:
-        #     pool_width = self.pool_shape[i]
-        #     img_width = inputs.shape[i + 2]
-        #     new_dim = int(img_width / (pool_width))
-        #     new_shape += (new_dim,)
-        # result = None
-        # for i in range(new_dim):
-        #
-        #     if new_shape[2] == 16:
-        #         #n = mesh_traversal.get_neighs(adj_mtx_2, coords_2, i, 1)
-        #         n = mesh_traversal.get_neighs_sq(inputs)
-        #     else:
-        #         #n = mesh_traversal.get_neighs(adj_mtx, coords, i, 1)
-        #         n = mesh_traversal.get_neighs_sq(inputs)
-        #
-        #     nlist = None
-        #     for neighbor in n:
-        #         #TODO: fix by applying small (8x8=64 vertex) order
-        #         if new_shape[2] == 16:
-        #             x = inputs[:, :, o2.index(neighbor)]
-        #         else:
-        #             x = inputs[:, :, order.index(neighbor)]
-        #         if nlist is None:
-        #             nlist = np.expand_dims(x, axis=2)
-        #         else:
-        #             x = np.expand_dims(x, axis=2)
-        #             nlist = np.concatenate((nlist, x), axis=2)
-        #     subresult = np.max(nlist, axis=2)
-        #     if result is None:
-        #         result = np.expand_dims(subresult, axis=2)
-        #     else:
-        #         subresult = np.expand_dims(subresult, axis=2)
-        #         result = np.concatenate((result, subresult), axis=2)
         return result
 
 class full_layer(object):
@@ -232,9 +227,9 @@ if __name__ == '__main__':
     L2_reg = 1.0
     input_shape = (1, 576, 25,)
     layer_specs = [init_conv_layer((25,), 6),
-                   maxpool_layer((4,)),
+                   maxpool_layer((9,)),
                    conv_layer((25,), 16),
-                   maxpool_layer((4,)),
+                   #maxpool_layer((9,)),
                    tanh_layer(120),
                    tanh_layer(84),
                    softmax_layer(10)]
@@ -253,14 +248,17 @@ if __name__ == '__main__':
 
     ##############
 
-    train_batch, train_labels, test_batch, test_labels, adj_mtx, coords = load_mesquare.load()
-    adj_mtx, _ = load_mesquare.create_mtx(28)  #TODO: check if correct
+    train_batch, train_labels, test_batch, test_labels, _, coords = load_mesquare.load()
+    #adj_mtx, _ = load_mesquare.create_mtx(28)
+    adj_mtx = load_mesquare.load_csv(24)
 
     order = mesh_traversal.traverse_mtx(adj_mtx, coords, center, stride)  # list of vertices, ordered
     rem = set(range(28 * 28)).difference(set(order))
     order = order + list(rem)
 
-    adj_mtx_2, coords_2 = load_mesquare.create_mtx(8)
+    _, coords_2 = load_mesquare.create_mtx(8)
+    adj_mtx_2 = load_mesquare.load_csv(8)
+
     o2 = mesh_traversal.traverse_mtx(adj_mtx_2, coords_2, center, stride)
     rem2 = set(range(8 * 8)).difference(set(o2))
     o2 = o2 + list(rem2)

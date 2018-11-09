@@ -612,6 +612,14 @@ def get_neighs_sq(inputs):
     return verts
 
 
+def get_neighs_sq2(adj_mtx, i):
+    new_row = adj_mtx[i]
+    new_row = np.nonzero(new_row)
+    verts = new_row[0]
+    return verts
+
+
+
 
 def get_neighs(adj_mtx, coords, vertex, r):
     verts = list()

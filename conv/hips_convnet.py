@@ -119,8 +119,6 @@ class conv_layer(object):
         if not isinstance(inputs, np.ndarray):
             inputs = inputs._value
         foo1.append([params, inputs])
-        #with open('CONV_ORG.pkl', 'wb') as f:
-        #    pickle.dump(conv, f)
 
         return conv + biases
 

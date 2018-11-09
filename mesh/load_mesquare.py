@@ -7,6 +7,8 @@ import numpy as np
 from conv import convolution_impl, mnist
 import pickle
 import pysal
+import csv
+from numpy import genfromtxt
 
 
 def load():
@@ -116,3 +118,13 @@ def create_mtx(x):
     coords = np.array(coords)
     # adj_mtx, coords, faces
     return adj_mtx, coords
+
+
+def load_csv(x):
+    if x == 8:
+        result = genfromtxt('../mesh/mtx8.csv', delimiter=',')
+        result[0][0] = 0
+    elif x == 24:
+        result = genfromtxt('../mesh/mtx24.csv', delimiter=',')
+        result[0][0] = 0
+    return result
