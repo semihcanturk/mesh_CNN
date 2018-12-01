@@ -48,6 +48,50 @@ def as_strided_seq(b, patch, stride):
     return out
 
 
+def as_strided_dyn(b, patch, stride):
+    # b is array to be strided
+    # patch is the length of one side of the patch. Must be smaller than smallest dimension of b
+    # stride is how much of a stride we want, we may wanna default it to 1
+    dims = b.shape
+    ex_ct = dims[0]
+    if dims[3] != dims[4]:
+        exit(-1)
+    else:
+        out = []
+        for k in range(ex_ct):
+            arr = []
+            for i in range(0,dims[3]-patch+1,stride):
+                arr2 = []
+                for j in range(0,dims[4]-patch+1,stride):
+                    if i+patch <= dims[3] and j+patch <= dims[4]:
+                        arr2.append([b[k, :, :, i:i+patch, j:j+patch]])
+                        #if len(arr2) == 0:
+                        #    arr2 = np.array([b[k, :, :, i:i+patch, j:j+patch]])
+                        #else:
+                        #    arr2 = npo.append(arr2, [b[k, :, :, i:i+patch, j:j+patch]], axis=0)
+                    #potential ELSE here
+                arr.append([arr2])
+                #if len(arr2) == dims[3]-patch+1:
+                #    if len(arr) == 0:
+                #        arr = np.array([arr2])
+                #    else:
+                #        arr = npo.vstack((arr, [arr2]))
+            out.append([arr])
+            #if len(out) == 0:
+            #    out = np.array([arr])
+            #else:
+            #    out = npo.vstack((out, [arr]))
+
+    out = np.array(out)
+
+    out = out[:, :, :, 0, :,  0, 0, :, :, :]
+    out = np.moveaxis(out, 4, 2)
+
+    #out = out.swapaxes(1, 3)
+    #out = out.swapaxes(2, 4)
+    return out
+
+
 def convolve_seq(a, b):
     out = []
     a_dims = a.shape

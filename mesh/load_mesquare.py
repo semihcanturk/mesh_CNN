@@ -7,8 +7,15 @@ import numpy as np
 from conv import convolution_impl, mnist
 import pickle
 import pysal
-import csv
+import time
 from numpy import genfromtxt
+import sys
+#from scipy import sparse
+import sparse
+import os
+import h5py
+import hickle as hkl
+
 
 
 def load():
@@ -52,6 +59,226 @@ def load():
                                       train_batch.shape[4] * train_batch.shape[5])
     test_batch = test_batch.reshape(test_batch.shape[0], test_batch.shape[1] * test_batch.shape[2],
                                       test_batch.shape[4] * test_batch.shape[5])
+
+    X = np.random.rand(M, N)
+
+    adj_mtx, Y = embed_mesh(X)
+
+    coords = []
+    for i in range(M):
+        for j in range(N):
+            coords.append([i, j, 0])
+
+    coords = np.array(coords)
+    #adj_mtx, coords, faces
+    return train_batch, train_labels, test_batch, test_labels, adj_mtx, coords
+
+
+def load_dynamic():
+
+    # image dimensions
+    M = 28
+    N = 28
+
+    H = 14
+
+    # Load and process MNIST data
+    print("Loading training data...")
+
+    add_color_channel = lambda x : x.reshape((x.shape[0], 1, x.shape[1], x.shape[2]))
+    one_hot = lambda x, K : np.array(x[:,None] == np.arange(K)[None, :], dtype=int)
+
+    #mnist.init()
+    train_images, train_labels, test_images, test_labels = mnist.load()
+
+    train_images = train_images.reshape((train_images.shape[0], 1, 28, 28)) / 255.0
+    test_images = test_images.reshape((test_images.shape[0], 1, 28, 28)) / 255.0
+
+    ##############
+
+    train_images = train_images[:500, :, :]
+    train_labels = train_labels[:500]
+    test_images = test_images[:50, :, :]
+    test_labels = test_labels[:50]
+
+
+    stime = time.time()
+
+    try:
+        with h5py.File('name-of-file.h5', 'r') as hf:
+            train_batch = hf['dyn_train'][:]
+            test_batch = hf['dyn_test'][:]
+
+        train_batch = train_batch.todense()
+        test_batch = test_batch.todense()
+    except (OSError, IOError) as e:
+
+        dyn_train = None
+        for img in train_images:
+            new_img = None
+            for i in range(0, H):
+                mask = np.zeros((1, img.shape[1], img.shape[2]))
+                mask[0, 2 * i] = 1
+                mask[0, 2 * i + 1] = 1
+                temp = np.multiply(mask, img)
+                if new_img is None:
+                    new_img = np.array([temp])
+                else:
+                    new_img = np.vstack((new_img, [temp]))
+            if dyn_train is None:
+                dyn_train = np.array([new_img])
+            else:
+                dyn_train = np.vstack((dyn_train, [new_img]))
+
+        dyn_test = None
+        for img in test_images:
+            new_img = None
+            for i in range(0, H):
+                mask = np.zeros((1, img.shape[1], img.shape[2]))
+                mask[0, 2 * i] = 1
+                mask[0, 2 * i + 1] = 1
+                temp = np.multiply(mask, img)
+                if new_img is None:
+                    new_img = np.array([temp])
+                else:
+                    new_img = np.vstack((new_img, [temp]))
+            if dyn_test is None:
+                dyn_test = np.array([new_img])
+            else:
+                dyn_test = np.vstack((dyn_test, [new_img]))
+
+        dyn_train = np.swapaxes(dyn_train, 1, 2)
+        dyn_test = np.swapaxes(dyn_test, 1, 2)
+
+        train_batch = convolution_impl.as_strided_dyn(dyn_train, 5, 1)
+        test_batch = convolution_impl.as_strided_dyn(dyn_test, 5, 1)
+
+        train_sparse = sparse.COO.from_numpy(train_batch)
+        test_sparse = sparse.COO.from_numpy(test_batch)
+
+        with h5py.File('dyn_sparse.h5', 'w') as hf:
+            hf.create_dataset('dyn_train', data=train_sparse)
+            hf.create_dataset('dyn_test', data=test_sparse)
+
+    etime = time.time()
+
+    print(etime-stime)
+
+    train_batch = train_batch.reshape(train_batch.shape[0], train_batch.shape[2],
+                                      train_batch.shape[3] * train_batch.shape[4],
+                                      train_batch.shape[5] * train_batch.shape[6])
+    test_batch = test_batch.reshape(test_batch.shape[0], test_batch.shape[2],
+                                    test_batch.shape[3] * test_batch.shape[4],
+                                    test_batch.shape[5] * test_batch.shape[6])
+
+    X = np.random.rand(M, N)
+
+    adj_mtx, Y = embed_mesh(X)
+
+    coords = []
+    for i in range(M):
+        for j in range(N):
+            coords.append([i, j, 0])
+
+    coords = np.array(coords)
+    #adj_mtx, coords, faces
+    return train_batch, train_labels, test_batch, test_labels, adj_mtx, coords
+
+
+def load_dynamic_2(n_ex=None):
+
+    # image dimensions
+    M = 28
+    N = 28
+
+    H = 14
+
+    # Load and process MNIST data
+    print("Loading training data...")
+
+    add_color_channel = lambda x : x.reshape((x.shape[0], 1, x.shape[1], x.shape[2]))
+    one_hot = lambda x, K : np.array(x[:,None] == np.arange(K)[None, :], dtype=int)
+
+    #mnist.init()
+    train_images, train_labels, test_images, test_labels = mnist.load()
+
+    train_images = train_images.reshape((train_images.shape[0], 1, 28, 28)) / 255.0
+    test_images = test_images.reshape((test_images.shape[0], 1, 28, 28)) / 255.0
+
+    ##############
+
+    if n_ex is not None:
+        train_images = train_images[:n_ex, :, :]
+        train_labels = train_labels[:n_ex]
+        test_images = test_images[:int(n_ex/10), :, :]
+        test_labels = test_labels[:int(n_ex/10)]
+
+    stime = time.time()
+
+    try:
+        with h5py.File('dyn_sparse.h5', 'r') as hf:
+            train_batch = hf['dyn_train'][:]
+            test_batch = hf['dyn_test'][:]
+
+        #train_batch = train_batch.todense()
+        #test_batch = test_batch.todense()
+    except (OSError, IOError) as e:
+
+        dyn_train = []
+        for img in train_images:
+            new_img = []
+            for i in range(0, H):
+                mask = np.zeros((1, img.shape[1], img.shape[2]))
+                mask[0, 2 * i] = 1
+                mask[0, 2 * i + 1] = 1
+                temp = np.multiply(mask, img)
+                new_img.append([temp])
+            dyn_train.append([new_img])
+
+        dyn_test = []
+        for img in test_images:
+            new_img = []
+            for i in range(0, H):
+                mask = np.zeros((1, img.shape[1], img.shape[2]))
+                mask[0, 2 * i] = 1
+                mask[0, 2 * i + 1] = 1
+                temp = np.multiply(mask, img)
+                new_img.append([temp])
+            dyn_test.append([new_img])
+
+        dyn_train = np.array(dyn_train)
+        dyn_test = np.array(dyn_test)
+
+        dyn_train = dyn_train[:, :, :, 0, 0, : :]
+        dyn_test = dyn_test[:, :, :, 0, 0, : :]
+
+        train_batch = convolution_impl.as_strided_dyn(dyn_train, 5, 1)
+        test_batch = convolution_impl.as_strided_dyn(dyn_test, 5, 1)
+
+        train_sparse = sparse.COO.from_numpy(train_batch)
+        test_sparse = sparse.COO.from_numpy(test_batch)
+
+        with h5py.File('dyn_sparse.h5', 'w') as hf:
+            hf.create_dataset('dyn_train', data=train_sparse, compression="gzip", compression_opts=9)
+            hf.create_dataset('dyn_test', data=test_sparse, compression="gzip", compression_opts=9)
+
+        #hkl.dump(train_sparse, "dyn_train_sparse.hkl")
+        #hkl.dump(test_sparse, "dyn_test_sparse.hkl")
+
+
+        #pickle.dump(train_sparse, open("dyn_train_sparse.pickle", "wb"), protocol=4)
+        #pickle.dump(test_sparse, open("dyn_test_sparse.pickle", "wb"), protocol=4)
+
+    etime = time.time()
+
+    print(etime-stime)
+
+    train_batch = train_batch.reshape(train_batch.shape[0], train_batch.shape[2],
+                                      train_batch.shape[3] * train_batch.shape[4],
+                                      train_batch.shape[5] * train_batch.shape[6])
+    test_batch = test_batch.reshape(test_batch.shape[0], test_batch.shape[2],
+                                    test_batch.shape[3] * test_batch.shape[4],
+                                    test_batch.shape[5] * test_batch.shape[6])
 
     X = np.random.rand(M, N)
 

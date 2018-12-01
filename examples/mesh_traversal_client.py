@@ -1,8 +1,6 @@
-import os
 import time
 from mesh import mesh_traversal_deprecated
 from mesh import load_icosahedron
-os.environ['ETS_TOOLKIT'] = 'qt4'
 
 """
 mesh_traversal_client.py

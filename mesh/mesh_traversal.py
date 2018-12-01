@@ -1,5 +1,5 @@
-import os
-os.environ['ETS_TOOLKIT'] = 'qt4'
+#import os
+#os.environ['ETS_TOOLKIT'] = 'qt4'
 import openmesh as om
 import autograd.numpy as np
 import numpy as npo
@@ -10,6 +10,9 @@ import time
 from scipy import sparse
 import itertools
 import functools
+import pickle
+import h5py
+
 
 
 # API
@@ -379,12 +382,9 @@ def traverse_mesh(coords, faces, center, stride=1, verbose=False, is_sparse=True
         else:
             l = len(adj_mtx[0])
         # until all vertices are seen #TODO: Fix inequality bug
-        while len(verts) <= 0.99 * l:
+        while len(verts) <= 0.95 * l:
             # this is the closest vertex of the new level
             # find the ordering of the level
-            if verbose_ctr == 130:
-                print("Here we are!")
-                print(len(verts))
             if verbose:
                 print("Iteration {}: {}".format(verbose_ctr, time.time() - start))
             verbose_ctr = verbose_ctr + 1
@@ -619,8 +619,6 @@ def get_neighs_sq2(adj_mtx, i):
     return verts
 
 
-
-
 def get_neighs(adj_mtx, coords, vertex, r):
     verts = list()
 
@@ -712,24 +710,34 @@ def mesh_strider_batch(adj_mtx, vals_list, coords, faces, center, r, stride):
     :return:    array of patches in traversal order, in form of list of lists
     """
     out = []
-    ctr = 0
+    stime = time.time()
+    try:
+        vertices = pickle.load(open("vertices.pkl", "rb"))
+    except:
+        vertices = traverse_mesh(coords, faces, center, stride=stride, verbose=False, is_sparse=True)
+        #rem = set(range(vals_list[0].shape[1])).difference(set(vertices))
+        #vertices = vertices + list(rem)
+        with open('vertices.pkl', 'wb') as f:
+            pickle.dump(vertices, f)
 
-    vertices = traverse_mesh(coords, faces, center, stride)  # list of vertices, ordered
-    rem = set(range(vals_list[0].shape[1])).difference(set(vertices))
-    vertices = vertices + list(rem)
+    mtime = time.time()
+    print(mtime-stime)
 
-    for mesh_vals in vals_list:
-        ctr = ctr + 1
-        patches = []
-        for v in vertices:
-            vals, neigh = find_region(adj_mtx, mesh_vals, coords, v, r, neighs=True)
-            patches.append(np.array(vals))
-        if len(out) == 0:
-            out = np.expand_dims(np.array(list(itertools.zip_longest(*patches, fillvalue=0))).T, axis=0)
-        else:
-            p = np.array(list(itertools.zip_longest(*patches, fillvalue=0))).T
-            p = np.expand_dims(p, axis=0)
-            out = np.concatenate((out, p), axis=0)
+    neigh_list = dict()
+    for v in vertices:
+        neighs = get_neighs(adj_mtx, coords, v, r)
+        neigh_list[v] = neighs
+
+        x = vals_list[:, :, [neighs], :]
+        if len(neighs) < 7:
+            temp = npo.zeros((x.shape[0], x.shape[1], 1, 7-len(neighs), x.shape[4]))
+            x = npo.append(x, temp, axis=3)
+        out.append(x)
+
+    etime = time.time()
+    print(etime-mtime)
+
+    out = np.array(out)
 
     return out
 
@@ -942,6 +950,29 @@ def mesh_convolve_tensorized(a, strided_mesh):
         a = a._value
         out = npo.einsum(a, [0, 1, 2], strided_mesh, [3, 4, 2])
     #out = np.squeeze(out)
+    out = out[0]
+    out = np.swapaxes(out, 0, 1)
+    return out
+
+
+def mesh_convolve_tensorized_dyn(a, strided_mesh):
+    """
+    Strides the mesh and applies a convolution to the patches
+    :param filters: list of filters
+    :param adj_mtx: adjacency matrix
+    :param coords: coordinates of each vertex
+    :return: result of the convolution operation
+    """
+    #center = 93 # arbitrary
+    #r = 1   # arbitrary
+    #with open('conv_objects.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
+    #    pickle.dump([filters, adj_mtx, vals_list, coords, faces, center, r, stride], f)
+
+    try:
+        out = npo.einsum(a, [0, 1, 5, 2], strided_mesh, [3, 5, 4, 2])
+    except:
+        a = a._value
+        out = npo.einsum(a, [0, 1, 5, 2], strided_mesh, [3, 5, 4, 2])
     out = out[0]
     out = np.swapaxes(out, 0, 1)
     return out

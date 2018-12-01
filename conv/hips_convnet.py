@@ -190,9 +190,9 @@ if __name__ == '__main__':
     L2_reg = 1.0
     input_shape = (1, 28, 28)
     layer_specs = [conv_layer((5, 5), 6),
-                   #maxpool_layer((2, 2)),
+                   maxpool_layer((2, 2)),
                    conv_layer((5, 5), 16),
-                   #maxpool_layer((2, 2)),
+                   maxpool_layer((2, 2)),
                    tanh_layer(120),
                    tanh_layer(84),
                    softmax_layer(10)]
@@ -216,16 +216,16 @@ if __name__ == '__main__':
 
     train_images, train_labels, test_images, test_labels = mnist.load()
 
-    train_images = train_images.reshape(train_images.shape[0], 28, 28)
-    test_images = test_images.reshape(test_images.shape[0], 28, 28)
+    #train_images = train_images.reshape(train_images.shape[0], 28, 28)
+    #test_images = test_images.reshape(test_images.shape[0], 28, 28)
 
-    train_images = train_images[:1000, :, :]
-    train_labels = train_labels[:1000]
-    test_images = test_images[:50, :, :]
-    test_labels = test_labels[:50]
+    #train_images = train_images[:1000, :, :]
+    #train_labels = train_labels[:1000]
+    #test_images = test_images[:50, :, :]
+    #test_labels = test_labels[:50]
 
-    train_images = train_images.reshape((1000, 1, 28, 28)) / 255.0
-    test_images = test_images.reshape((50, 1, 28, 28)) / 255.0
+    train_images = train_images.reshape((train_images.shape[0], 1, 28, 28)) / 255.0
+    test_images = test_images.reshape((test_images.shape[0], 1, 28, 28)) / 255.0
 
     # train_temp = np.zeros(len(train_labels))
     # test_temp = np.zeros(len(test_labels))
