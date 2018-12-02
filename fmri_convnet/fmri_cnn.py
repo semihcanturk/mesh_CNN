@@ -162,7 +162,7 @@ class conv_layer(object):
             adj_mtx = m0
             coords = np.array(v0)
             faces = f0
-        conv = mesh_traversal.mesh_convolve_tensor(params, adj_mtx, inputs, coords, faces, center, r, stride)
+        conv = mesh_traversal.tensorize_and_convolve_mesh(params, adj_mtx, inputs, coords, faces, center, r, stride)
         return conv + biases
 
     def build_weights_dict(self, input_shape):

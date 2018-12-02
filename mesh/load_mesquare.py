@@ -12,8 +12,13 @@ import h5py
 import hickle as hkl
 
 
-
 def load():
+    """
+    creates a square gridmesh equal to the dimensions of the mnist dataset, and embeds the mnist examples on the mesh
+    structure, allowing the mesh cnn to discriminate the numbers from the mesh instead of the dataset.
+    :return: train/test and mesh data
+    """
+
     # image dimensions
     M = 28
     N = 28
@@ -60,6 +65,13 @@ def load():
 
 
 def load_dynamic(n_ex=None):
+    """
+    creates a square gridmesh equal to the dimensions of the mnist dataset, and embeds the mnist examples on the mesh
+    structure, allowing the mesh cnn to discriminate the numbers from the mesh instead of the dataset. Then, sparsifies
+    the examples by adding a time dimension, with only a section of the full image shown in each time step. this results
+    in a dynamic recognition task rather than a static one, which was the case in load().
+    :return: train/test and mesh data
+    """
 
     # image dimensions
     M = 28
@@ -186,6 +198,11 @@ def embed_mesh(X):
 
 
 def create_mtx(x):
+    """
+    creates adjacency matrix
+    :param x: size of matrix
+    :return: adjacency matrix
+    """
     X = np.random.rand(x, x)
 
     # optional way to create adjacency matrix
@@ -204,10 +221,18 @@ def create_mtx(x):
 
 
 def load_csv(x):
+    """
+    loads cached adj_mtx data
+    :param x: size (only 8 and 24 work for the mnist examples.)
+    :return:
+    """
     if x == 8:
         result = genfromtxt('../mesh/mtx8.csv', delimiter=',')
         result[0][0] = 0
     elif x == 24:
         result = genfromtxt('../mesh/mtx24.csv', delimiter=',')
         result[0][0] = 0
+    else:
+        print("please 8 or 24, sizes compatible for the dataset. 'None' returned.")
+        return None
     return result

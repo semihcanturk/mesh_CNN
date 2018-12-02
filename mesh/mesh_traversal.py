@@ -210,8 +210,8 @@ def traverse_mtx(adj_mtx, coords, center, stride=1, verbose=False, is_sparse=Tru
             l = adj_mtx.shape[0]
         else:
             l = len(adj_mtx[0])
-        # until all vertices are seen #TODO: Fix inequality bug
-        while len(verts) <= 0.99 * l:
+        # until all/certain percentage of vertices are seen
+        while len(verts) <= 0.95 * l:
             # this is the closest vertex of the new level
             # find the ordering of the level
             if verbose_ctr == 130:
@@ -642,7 +642,6 @@ def get_neighs(adj_mtx, coords, vertex, r):
     ix_min = ix_list[dists.index(min(dists))]
     closest_ix = ix_min
 
-    # levels_>=1
     for i in range(1, r + 1):
         # this is the closest vertex of the new level
         # find the ordering of the level
@@ -715,8 +714,11 @@ def mesh_strider_batch(adj_mtx, vals_list, coords, faces, center, r, stride):
         vertices = pickle.load(open("vertices.pkl", "rb"))
     except:
         vertices = traverse_mesh(coords, faces, center, stride=stride, verbose=False, is_sparse=True)
-        #rem = set(range(vals_list[0].shape[1])).difference(set(vertices))
-        #vertices = vertices + list(rem)
+        # If a full list is desiered, append non-traversed vertices to the end.
+
+        # rem = set(range(vals_list[0].shape[1])).difference(set(vertices))
+        # vertices = vertices + list(rem)
+
         with open('vertices.pkl', 'wb') as f:
             pickle.dump(vertices, f)
 
@@ -744,16 +746,14 @@ def mesh_strider_batch(adj_mtx, vals_list, coords, faces, center, r, stride):
 
 def mesh_convolve(filters, adj_mtx, vals_list, coords, faces, center, r, stride):
     """
-    Strides the mesh and applies a convolution to the patches
+    Strides the mesh and applies a convolution to the patches. For testing purposes only, see versions below
+    for efficient implementations.
     :param filters: list of filters
     :param adj_mtx: adjacency matrix
     :param coords: coordinates of each vertex
     :return: result of the convolution operation
     """
-    #center = 93 # arbitrary
-    #r = 1   # arbitrary
-    #with open('conv_objects.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
-    #    pickle.dump([filters, adj_mtx, vals_list, coords, faces, center, r, stride], f)
+
     f_count = vals_list.shape[1]
     conv_arr = []
     for vals in vals_list:
@@ -768,7 +768,6 @@ def mesh_convolve(filters, adj_mtx, vals_list, coords, faces, center, r, stride)
                     try:
                         p = p / LA.norm(p)
                     except:
-                        print("boo")
                         x = [i._value for i in p]
                         try:
                             p = x / LA.norm(x)
@@ -777,55 +776,44 @@ def mesh_convolve(filters, adj_mtx, vals_list, coords, faces, center, r, stride)
                             try:
                                 p = y / LA.norm(y)
                             except:
-                                print("boo")
+                                print("Convolution error.")
                     try:
-                        #temp = np.einsum('i,i->', f, p)
                         temp = np.dot(f, p)
                         row.append(temp)
                     except:
-                        #temp = np.einsum('i,i->', f[:len(p)], p)
                         temp = np.dot(f[:len(p)], p)
                         row.append(temp)
                 if len(filter_arr) == 0:
                     filter_arr = np.array([row])
-                    row = []
                 else:
                     filter_arr = np.vstack((filter_arr, [row]))
-                    row = []
             if len(depth_arr) == 0:
                 depth_arr = np.array([filter_arr])
-                filter_arr = []
             else:
                 depth_arr = np.vstack((depth_arr, [filter_arr]))
-                filter_arr = []
         if len(conv_arr) == 0:
             conv_arr = np.array([depth_arr])
-            depth_arr = []
         else:
             conv_arr = np.vstack((conv_arr, [depth_arr]))
-            depth_arr = []
     conv_arr = np.sum(conv_arr, axis=1)
     return conv_arr
 
 
 def mesh_convolve_iter(a, adj_mtx, vals_list, coords, faces, center, r, stride):
     """
-    Strides the mesh and applies a convolution to the patches
+    Iteratively strides the mesh and applies a convolution to the patches. For testing purposes only, see tensorized
+    versions below for efficient implementations.
     :param filters: list of filters
     :param adj_mtx: adjacency matrix
     :param coords: coordinates of each vertex
     :return: result of the convolution operation
     """
-    #center = 93 # arbitrary
-    #r = 1   # arbitrary
-    #with open('conv_objects.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
-    #    pickle.dump([filters, adj_mtx, vals_list, coords, faces, center, r, stride], f)
 
     a_dims = a.shape
     strided_mesh = mesh_strider_batch(adj_mtx, vals_list, coords, faces, center, r, stride)
     mdi = MeshDataIterator(strided_mesh)
 
-    out = []    #TODO: Consider dividing by norm (why did we do that in the original?)
+    out = []    #TODO: Consider dividing by norm
     for i in range(a_dims[1]):
         filters = []
         filter = a[:, i, :]
@@ -837,7 +825,6 @@ def mesh_convolve_iter(a, adj_mtx, vals_list, coords, faces, center, r, stride):
             except:
                 temp = npo.einsum('ij,ij->i', filter._value, patch)
                 # patch = temp_b[ctr, j, k, :, :, :]
-                # temp = npo.einsum('ijk,ijk->', filter, patch)
             filters.append(temp)
         if len(out) == 0:
             out = npo.array([filters])
@@ -848,62 +835,12 @@ def mesh_convolve_iter(a, adj_mtx, vals_list, coords, faces, center, r, stride):
     out = np.swapaxes(out, 0, 1)
     return out
 
-    # conv_arr = []
-    # for vals in vals_list:
-    #     depth_arr = []
-    #     for c in range(f_count):
-    #         strided_mesh = mesh_strider(adj_mtx, vals[c], coords, faces, center, r, stride)
-    #         filter_arr = []
-    #         for f in filters[c]:
-    #             row = []
-    #             for p in strided_mesh:
-    #                 p = np.array(p)
-    #                 try:
-    #                     p = p / LA.norm(p)
-    #                 except:
-    #                     print("boo")
-    #                     x = [i._value for i in p]
-    #                     try:
-    #                         p = x / LA.norm(x)
-    #                     except:
-    #                         y = [i._value for i in x]
-    #                         try:
-    #                             p = y / LA.norm(y)
-    #                         except:
-    #                             print("boo")
-    #                 try:
-    #                     #temp = np.einsum('i,i->', f, p)
-    #                     temp = np.dot(f, p)
-    #                     row.append(temp)
-    #                 except:
-    #                     #temp = np.einsum('i,i->', f[:len(p)], p)
-    #                     temp = np.dot(f[:len(p)], p)
-    #                     row.append(temp)
-    #             if len(filter_arr) == 0:
-    #                 filter_arr = np.array([row])
-    #                 row = []
-    #             else:
-    #                 filter_arr = np.vstack((filter_arr, [row]))
-    #                 row = []
-    #         if len(depth_arr) == 0:
-    #             depth_arr = np.array([filter_arr])
-    #             filter_arr = []
-    #         else:
-    #             depth_arr = np.vstack((depth_arr, [filter_arr]))
-    #             filter_arr = []
-    #     if len(conv_arr) == 0:
-    #         conv_arr = np.array([depth_arr])
-    #         depth_arr = []
-    #     else:
-    #         conv_arr = np.vstack((conv_arr, [depth_arr]))
-    #         depth_arr = []
-    # conv_arr = np.sum(conv_arr, axis=1)
-    # return conv_arr
 
-
-def mesh_convolve_tensor(a, adj_mtx, vals_list, coords, faces, center, r, stride):
+def tensorize_and_convolve_mesh(a, adj_mtx, vals_list, coords, faces, center, r, stride):
     """
-    Strides the mesh and applies a convolution to the patches
+    Strides the mesh and applies convolution operation. Prepares tensors within the function, so not as efficient as
+    mesh_convolve_tensorized(). If operating on already strided data, use mesh_convolve_tensorized() or
+    mesh_convolve_tensorized_dyn().
     :param filters: list of filters
     :param adj_mtx: adjacency matrix
     :param coords: coordinates of each vertex
@@ -925,60 +862,51 @@ def mesh_convolve_tensor(a, adj_mtx, vals_list, coords, faces, center, r, stride
             strided_mesh = strided_mesh._value
             out = npo.einsum(a, [0, 1, 2], strided_mesh, [3, 4, 2])
 
-    #out = np.squeeze(out)
     out = out[0]
     out = np.swapaxes(out, 0, 1)
     return out
 
 
-def mesh_convolve_tensorized(a, strided_mesh):
+def mesh_convolve_tensorized(a, b):
     """
-    Strides the mesh and applies a convolution to the patches
-    :param filters: list of filters
-    :param adj_mtx: adjacency matrix
-    :param coords: coordinates of each vertex
+    Performs convolution on the strided patches, used for the static data from load_mesquare.load()
+    :param a: the filters, first array to be convoluted
+    :param b: the strided mesh, second array to be convoluted
     :return: result of the convolution operation
     """
-    #center = 93 # arbitrary
-    #r = 1   # arbitrary
-    #with open('conv_objects.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
-    #    pickle.dump([filters, adj_mtx, vals_list, coords, faces, center, r, stride], f)
 
     try:
-        out = npo.einsum(a, [0, 1, 2], strided_mesh, [3, 4, 2])
+        out = npo.einsum(a, [0, 1, 2], b, [3, 4, 2])
     except:
         a = a._value
-        out = npo.einsum(a, [0, 1, 2], strided_mesh, [3, 4, 2])
-    #out = np.squeeze(out)
+        out = npo.einsum(a, [0, 1, 2], b, [3, 4, 2])
     out = out[0]
     out = np.swapaxes(out, 0, 1)
     return out
 
 
-def mesh_convolve_tensorized_dyn(a, strided_mesh):
+def mesh_convolve_tensorized_dyn(a, b):
     """
-    Strides the mesh and applies a convolution to the patches
-    :param filters: list of filters
-    :param adj_mtx: adjacency matrix
-    :param coords: coordinates of each vertex
+    Performs convolution on the strided patches, used for the dynamic data from load_mesquare.load_dynamic()
+    :param a: the filters, first array to be convoluted
+    :param b: the strided mesh, second array to be convoluted
     :return: result of the convolution operation
     """
-    #center = 93 # arbitrary
-    #r = 1   # arbitrary
-    #with open('conv_objects.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
-    #    pickle.dump([filters, adj_mtx, vals_list, coords, faces, center, r, stride], f)
 
     try:
-        out = npo.einsum(a, [0, 1, 5, 2], strided_mesh, [3, 5, 4, 2])
+        out = npo.einsum(a, [0, 1, 5, 2], b, [3, 5, 4, 2])
     except:
         a = a._value
-        out = npo.einsum(a, [0, 1, 5, 2], strided_mesh, [3, 5, 4, 2])
+        out = npo.einsum(a, [0, 1, 5, 2], b, [3, 5, 4, 2])
     out = out[0]
     out = np.swapaxes(out, 0, 1)
     return out
 
 
-class MeshDataIterator:     # TODO: maybe not copy the array but access elements inplace?
+class MeshDataIterator:
+    """
+    Iterator object to parse mesh data.
+    """
     def __init__(self, b):
         self.ix = 0
         self.arr = b

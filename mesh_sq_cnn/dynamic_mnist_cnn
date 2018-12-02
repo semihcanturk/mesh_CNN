@@ -1,5 +1,6 @@
-"""Convolutional neural net on MNIST, modeled on 'LeNet-5',
-http://yann.lecun.com/exdb/publis/pdf/lecun-98.pdf"""
+"""
+
+"""
 from __future__ import absolute_import
 from __future__ import print_function
 from builtins import range
@@ -13,7 +14,16 @@ import mnist
 import time
 import math
 import datetime
-import pickle
+
+"""
+CNN based on HIPS' hips_convnet.py, adapted to mesh data structures with the MNIST data embedded on them.
+It also works on a more difficult discrimination task in that the data is in dynamic form, where only a small
+portion of the matrix that represents the "number" is shown to the CNN in each time step. therefore, the CNN is forced
+to recognize temporal relations as well as spatial ones.
+"""
+
+_author_ = "Semih Cantürk"
+_credits_ = "Cassiano Becker"
 
 convolve = autograd.scipy.signal.convolve
 from mesh import load_mesquare

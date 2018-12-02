@@ -1,5 +1,3 @@
-"""Convolutional neural net on MNIST, modeled on 'LeNet-5',
-http://yann.lecun.com/exdb/publis/pdf/lecun-98.pdf"""
 from __future__ import absolute_import
 from __future__ import print_function
 from builtins import range
@@ -13,7 +11,14 @@ import mnist
 import time
 import math
 import datetime
-import pickle
+
+"""
+CNN based on HIPS' hips_convnet.py, adapted to mesh data structures with the MNIST data embedded on them.
+Functionally, is the same with hips_convnet.py, except that it works with 3D meshes.
+"""
+
+_author_ = "Semih Cantürk"
+_credits_ = "Cassiano Becker"
 
 convolve = autograd.scipy.signal.convolve
 from mesh import load_mesquare

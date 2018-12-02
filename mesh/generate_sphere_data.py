@@ -4,8 +4,13 @@ from scipy import sparse
 
 
 def generate(n_ex=5000):
+    """
+    generates an sphere mesh representing a smaller brain mesh, and embeds random patterns
+    drawn from a distribution, creating data for a basic discrimination task.
+    :param n_ex: number of examples created
+    :return: train/test and mesh data
+    """
     verts, faces, adj_mtx = load_sphere.load(2)
-    #adj_mtx, _, _ = mesh_traversal_debug.create_adj_mtx(np.array(verts), np.array(faces), is_sparse=True)
 
     n_patterns = 5
     n_data = n_ex

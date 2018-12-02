@@ -1,5 +1,5 @@
 import time
-from mesh import mesh_traversal_deprecated
+from mesh import mesh_traversal
 from mesh import load_icosahedron
 
 """
@@ -14,9 +14,9 @@ coords, faces = load_icosahedron.load()
 
 # Example with non-sparse matrix
 start = time.time()
-one_stride = mesh_traversal_deprecated.traverse_mesh(coords, faces, 0, is_sparse=False)
-two_stride = mesh_traversal_deprecated.traverse_mesh(coords, faces, 0, 2, is_sparse=False)
-three_stride = mesh_traversal_deprecated.traverse_mesh(coords, faces, 0, 3, is_sparse=False)
+one_stride = mesh_traversal.traverse_mesh(coords, faces, 0, is_sparse=False)
+two_stride = mesh_traversal.traverse_mesh(coords, faces, 0, 2, is_sparse=False)
+three_stride = mesh_traversal.traverse_mesh(coords, faces, 0, 3, is_sparse=False)
 end = time.time()
 
 print("NON_SPARSE MATRIX IMPLEMENTATION")
@@ -27,9 +27,9 @@ print("Result of 3-stride example: {}".format(three_stride))  # [0] = Level 0, [
 print("Runtime: {}\n".format(end - start))
 
 start = time.time()
-one_stride_s = mesh_traversal_deprecated.traverse_mesh(coords, faces, 0, is_sparse=True)
-two_stride_s = mesh_traversal_deprecated.traverse_mesh(coords, faces, 0, 2, is_sparse=True)
-three_stride_s = mesh_traversal_deprecated.traverse_mesh(coords, faces, 0, 3, is_sparse=True)
+one_stride_s = mesh_traversal.traverse_mesh(coords, faces, 0, is_sparse=True)
+two_stride_s = mesh_traversal.traverse_mesh(coords, faces, 0, 2, is_sparse=True)
+three_stride_s = mesh_traversal.traverse_mesh(coords, faces, 0, 3, is_sparse=True)
 end = time.time()
 
 print("SPARSE MATRIX IMPLEMENTATION")

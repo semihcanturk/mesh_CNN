@@ -4,14 +4,19 @@ from scipy import sparse
 
 
 def generate():
+    """
+    generates an icosahedron mesh representing a smaller brain mesh, and embeds random patterns
+    drawn from a distribution, creating data for a basic discrimination task.
+    :return: train/test and mesh data
+    """
     verts, faces = load_icosahedron.load()
     adj_mtx, _, _ = mesh_traversal.create_adj_mtx(np.array(verts), np.array(faces), is_sparse=True)
     print(sparse.issparse(adj_mtx))
 
     n_patterns = 1
-
+    n_data = 100
     mesh_data = list()
-    for i in range(100):
+    for i in range(n_data):
         mesh_vals = np.random.choice(np.array([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]), size=12, replace=True)
         if i < 20:
             for j in range(n_patterns):

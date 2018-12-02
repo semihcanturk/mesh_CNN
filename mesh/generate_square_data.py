@@ -1,10 +1,13 @@
 import numpy as np
-from mesh import load_sphere, mesh_traversal
-from scipy import sparse
 
 
 def generate(n_ex=5000):
-
+    """
+    generates an square mesh and embeds random patterns drawn from a distribution,
+    creating data for a basic discrimination task.
+    :param n_ex: number of examples created
+    :return: train/test and mesh data
+    """
     n_data = n_ex
     n_zeros = int(n_data * 0.5)
     n_ones = int(n_data * 0.5)
@@ -32,6 +35,8 @@ def generate(n_ex=5000):
             mesh_vals[x + 1, y + 3] = np.random.uniform(50, 60)
             mesh_vals[x + 2, y + 3] = np.random.uniform(50, 60)
             mesh_vals[x + 3, y + 3] = np.random.uniform(50, 60)
+        # add more noise if desired
+
         # else:
         #     x = np.random.choice(range(14, 24))
         #     y = np.random.choice(range(24))

@@ -3,17 +3,18 @@ from math import sqrt
 from mesh import mesh_traversal
 import numpy as np
 
-"""
-
-"""
-
 
 def load(subdiv=2):
+    """
+    generates an sphere mesh representing a smaller brain mesh, and embeds random patterns
+    drawn from a distribution, creating data for a basic discrimination task.
+    :param subdiv: # subdivisions for the recursive generation of mesh. More subdivisions lead to a more complex mesh.
+    :return: vertices, faces and adjacency matrix for the mesh.
+    """
     # -----------------------------------------------------------------------------
     # Settings
 
     scale = 1
-    #subdiv = 2
 
     # -----------------------------------------------------------------------------
     # Functions

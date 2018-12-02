@@ -3,9 +3,11 @@ import autograd.numpy as np
 import numpy as npo
 import math
 
-# neighbor_count = adj_mtx.sum(axis=0)    # vertices with ids 0:11 have 5 neighbors (causing 5-bug), all others 6
-# neighs_0 = npo.nonzero(adj_mtx[0])
-# print(neighs_0) # [12, 68, 1720, 3372, 11800]
+"""
+Creates mesh data for an icosahedron.
+"""
+
+# vertices with ids 0:11 have 5 neighbors (causing 5-bug), all others 6
 
 # here is an icosahedron, everyone's favorite platonic solid
 r = (1.0 + math.sqrt(5.0)) / 2.0

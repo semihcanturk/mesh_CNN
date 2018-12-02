@@ -3,8 +3,8 @@ import numpy as np
 import nibabel as nib
 from numpy import genfromtxt
 from mesh import mesh_traversal
-from fmri import multiclass
-from fmri import fmri_windowing as dp
+from fmri import windowing_fmri
+from fmri import process_fmri as dp
 import matplotlib.pyplot as plt
 
 
@@ -18,7 +18,7 @@ def load_all_examples():
     H, Gp, Gn = 15, 4, 4
 
     C, _, X_bar = dp.get_dataset('../fmri/all_subjects/', session='MOTOR_LR')
-    X, y = multiclass.encode(C, X_bar, H, Gp, Gn)
+    X, y = windowing_fmri.encode(C, X_bar, H, Gp, Gn)
 
     n_data = len(y)
     train_test_split = 0.8
@@ -41,6 +41,11 @@ def load_all_examples():
 
 
 def load_single_example():
+    """
+    loads and parses data from a single example. The specified data is available from the open source
+    Human Connectome Project.
+    :return: parsed fmri file in train/test data and labels
+    """
     H, Gp, Gn = 15, 4, 4
     C, _, X_bar = dp.get_dataset_single('./load_data/601127_aparc_tasks_aparc.mat', p=148, session='MOTOR_LR')
 
@@ -74,7 +79,7 @@ def load_single_example():
     C = C.reshape(1, C.shape[0], C.shape[1])
     a_swap = a_swap.reshape(1, a_swap.shape[0], a_swap.shape[1])
 
-    X, y = multiclass.encode(C, a_swap, H, Gp, Gn)
+    X, y = windowing_fmri.encode(C, a_swap, H, Gp, Gn)
 
     n_data = len(y)
     train_test_split = 0.8
@@ -98,6 +103,10 @@ def load_single_example():
 
 
 def load():
+    """
+    Loads 3D surface data and creates its adjacency matrix.
+    :return: training & test data, adjacency matrix of the mesh, the list of mesh coordinates and faces
+    """
     try:
         coords_gii = genfromtxt('coords.csv', delimiter=',')
         faces_gii = genfromtxt('faces.csv', delimiter=',')

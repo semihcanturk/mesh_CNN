@@ -8,10 +8,19 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
 
-from fmri import fmri_windowing as dp
+from fmri import process_fmri as process
 
 
 def encode(C, X, H, Gp, Gn):
+    """
+    encodes
+    :param C: data labels
+    :param X: data to be windowed
+    :param H: window size
+    :param Gp: start point guard
+    :param Gn: end point guard
+    :return:
+    """
     _, m, _ = C.shape
     Np, p, T = X.shape
     N = T - H + 1
@@ -44,6 +53,11 @@ def encode(C, X, H, Gp, Gn):
 
 
 def craft(X):
+    """
+    feature crafting for signal
+    :param X: fmri signal data
+    :return: crafted features
+    """
     num_examples, p, T = X.shape
     X_f = np.empty(shape=(num_examples, p, 0))
 
@@ -107,6 +121,13 @@ def apply_pca(X, n):
 
 
 def try_model(X, y, model):
+    """
+    run a ML model with the data and labels
+    :param X: data
+    :param y: labels
+    :param model: desired ML model
+    :return: resulting confusion matrix
+    """
     seed = 21
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=seed)
     model.fit(X_train, y_train)
@@ -124,11 +145,15 @@ def try_model(X, y, model):
 
 
 def main():
+    """
+    example data processing and training pipeline
+    :return:
+    """
     H, Gp, Gn = 15, 4, 4
     num_components = 300
     seed = 21
 
-    C, _, X_bar = dp.get_dataset('./all_subjects/', p=148, session='MOTOR_LR')
+    C, _, X_bar = process.get_dataset('./all_subjects/', p=148, session='MOTOR_LR')
     
     X, y = encode(C, X_bar, H, Gp, Gn)
     X_f = craft(X)

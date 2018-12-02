@@ -19,7 +19,6 @@ v, f = load_sphere.load()
 v = np.array(v)
 f = np.array(f)
 
-# TODO: Verify that this is working correctly after implementation changes in mesh_traversal_deprecated.py
 adj_mtx, coords, faces = mesh_traversal.create_adj_mtx(v, f)
 
 #traversal_list = mesh_traversal_debug.traverse_mesh(coords, faces, 28105, verbose=True, is_sparse=True)
