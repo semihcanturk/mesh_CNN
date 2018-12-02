@@ -236,10 +236,6 @@ class tanh_layer(full_layer):
                         else:
                             val = val_temp._value._value._value._value._value._value._value._value
                     fin[i][j] = val
-
-            #end = time.time()
-            #print(end-start)
-            #print("boo")
             return np.tanh(fin)
 
 class softmax_layer(full_layer):
@@ -293,12 +289,7 @@ if __name__ == '__main__':
         pickle.dump((train_batch, train_labels, test_batch, test_labels,
                      adj_mtx, mesh_vals, coords, faces), open("data.pickle", "wb"))
 
-    #train_images, train_labels, test_images, test_labels, \
-    #adj_mtx, mesh_vals, coords, faces = generate_sphere_data.generate(1000)
-
-
     stime0 = time.time()
-
 
     order = mesh_traversal.traverse_mesh(coords, faces, center, stride)  # list of vertices, ordered
     rem = set(range(len(mesh_vals))).difference(set(order))
@@ -336,10 +327,6 @@ if __name__ == '__main__':
     # Train with sgd
     batch_idxs = make_batches(N_data, batch_size)
     cur_dir = np.zeros(N_weights)
-
-    #start = time.time()
-    #sdate = datetime.datetime.fromtimestamp(start).strftime('%Y-%m-%d %H:%M:%S')
-    #print(sdate)
 
     stime = time.time()
     print(stime-stime0)

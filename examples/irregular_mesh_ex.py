@@ -3,6 +3,10 @@ import math
 import openmesh as om
 from mesh import mesh_traversal_deprecated
 
+"""
+Creates an irregular triangular mesh  to traverse for testing purposes.
+"""
+
 
 coords = np.array([
     [0, 0, 15],

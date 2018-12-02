@@ -10,11 +10,15 @@ import pickle
 import time
 
 
-def as_strided_seq(b, patch, stride):
-    # b is array to be strided
-    # patch is the length of one side of the patch. Must be smaller than smallest dimension of b
-    # stride is how much of a stride we want, we may wanna default it to 1
-    # TODO: How to deal with padding?
+def as_strided_seq(b, patch=5, stride=1):
+    """
+    Strides the input data sequentially through loops. For demonstration purposes only, use as_strided_dyn()
+    for efficient implementation.
+    :param b: array to be strided
+    :param patch: patch is the length of one side of the patch. Must be smaller than smallest dimension of b
+    :param stride: desired stride between patches
+    :return: strided form of input data, prepared for convolution
+    """
     dims = b.shape
     ex_ct = dims[0]
     if dims[2] != dims[3]:
@@ -48,10 +52,15 @@ def as_strided_seq(b, patch, stride):
     return out
 
 
-def as_strided_dyn(b, patch, stride):
-    # b is array to be strided
-    # patch is the length of one side of the patch. Must be smaller than smallest dimension of b
-    # stride is how much of a stride we want, we may wanna default it to 1
+def as_strided_dyn(b, patch=5, stride=1):
+    """
+    Strides the input data as preprocessing for convolution.
+    for efficient implementation
+    :param b: array to be strided
+    :param patch: patch is the length of one side of the patch. Must be smaller than smallest dimension of b
+    :param stride: desired stride between patches
+    :return: strided form of input data, prepared for convolution
+    """
     dims = b.shape
     ex_ct = dims[0]
     if dims[3] != dims[4]:
@@ -65,37 +74,28 @@ def as_strided_dyn(b, patch, stride):
                 for j in range(0,dims[4]-patch+1,stride):
                     if i+patch <= dims[3] and j+patch <= dims[4]:
                         arr2.append([b[k, :, :, i:i+patch, j:j+patch]])
-                        #if len(arr2) == 0:
-                        #    arr2 = np.array([b[k, :, :, i:i+patch, j:j+patch]])
-                        #else:
-                        #    arr2 = npo.append(arr2, [b[k, :, :, i:i+patch, j:j+patch]], axis=0)
-                    #potential ELSE here
                 arr.append([arr2])
-                #if len(arr2) == dims[3]-patch+1:
-                #    if len(arr) == 0:
-                #        arr = np.array([arr2])
-                #    else:
-                #        arr = npo.vstack((arr, [arr2]))
             out.append([arr])
-            #if len(out) == 0:
-            #    out = np.array([arr])
-            #else:
-            #    out = npo.vstack((out, [arr]))
 
     out = np.array(out)
 
     out = out[:, :, :, 0, :,  0, 0, :, :, :]
     out = np.moveaxis(out, 4, 2)
 
-    #out = out.swapaxes(1, 3)
-    #out = out.swapaxes(2, 4)
     return out
 
 
 def convolve_seq(a, b):
+    """
+    Convolves two arrays sequentially through loops. For demonstration purposes only, use convolve_dyn()
+    and convolve_tensor for efficient implementation.
+    :param a: first array to be convoluted
+    :param b: second array to be convoluted
+    :return: convolved array
+    """
     out = []
     a_dims = a.shape
-    b = as_strided_seq(b, 5, 1)  # arbitrary patch & stride for now
+    b = as_strided_seq(b, 5, 1)
 
     for ctr in range(a_dims[1]):
         if isinstance(a, np.ndarray):
@@ -119,8 +119,6 @@ def convolve_seq(a, b):
                     for l in range(s[3]):
                         for m in range(s[4]):
                             for n in range(s[5]):
-                                #val = b[i][j][k][l][m][n]
-                                #temp_b[i][j][k][l][m][n] = val
                                 try:
                                     val = b[i][j][k][l][m][n]._value
                                     temp_b[i][j][k][l][m][n] = val
@@ -170,6 +168,12 @@ def convolve_seq(a, b):
 
 
 def convolve_seq_iter(a, b):
+    """
+    Convolves two arrays. For tensorized implementation, see convolve_tensor().
+    :param a: first array to be convoluted
+    :param b: second array to be convoluted
+    :return: convolved array
+    """
     a_dims = a.shape
     b = as_strided_seq(b, 5, 1)  # arbitrary patch & stride for now
     di = DataIterator(b)
@@ -197,9 +201,7 @@ def convolve_seq_iter(a, b):
             try:
                 temp = npo.einsum('ijk,ijk->', filter, patch)
             except:
-                print("boo")
-                #patch = temp_b[ctr, j, k, :, :, :]
-                #temp = npo.einsum('ijk,ijk->', filter, patch)
+                print("Convolution unsuccessful, exit op")
             filters.append(temp)
         if len(out) == 0:
             out = npo.array([filters])
@@ -211,30 +213,30 @@ def convolve_seq_iter(a, b):
     return out
 
 
-def convolve_seq_tensor(a, b):
-
-    check1 = time.time()
-    b = as_strided_seq(b, 5, 1)  # arbitrary patch & stride for now
-    check2 = time.time()
+def convolve_tensor(a, b):
+    """
+    Convolves two tensorized arrays, most efficient convolution method.
+    :param a: first array to be convoluted
+    :param b: second array to be convoluted
+    :return: convolved array
+    """
+    b = as_strided_seq(b, 5, 1)
     b = np.moveaxis(b, [0, 1, 2, 3, 4, 5], [0, 3, 4, 5, 1, 2])
     b = np.moveaxis(b, 5, 1)
     try:
         out = npo.einsum(a, [12, 1, 10, 11], b, [4, 12, 10, 11, 8, 9])
-        #out = npo.einsum(a, [12, 1, 10, 11], b, [4, 8, 9, 12, 10, 11])
         out = np.swapaxes(out, 0, 1)
     except:
         a = a._value
         out = npo.einsum(a, [12, 1, 10, 11], b, [4, 12, 10, 11, 8, 9])
         out = np.swapaxes(out, 0, 1)
-    check3 = time.time()
-    #print("STRIDE TIME")
-    #print(check2 - check1)
-    #print("EINSUM TIME")
-    #print(check3 - check2)
     return out
 
 
-class DataIterator:     # TODO: maybe not copy the array but access elements inplace?
+class DataIterator:     # Alternative impl: do not copy the array but access elements inplace.
+    """
+    Iterator to access input sequentially.
+    """
     def __init__(self, b):
         self.ix = 0
         self.arr = []
@@ -252,7 +254,7 @@ class DataIterator:     # TODO: maybe not copy the array but access elements inp
         try:
             item = self.arr[self.ix]
         except:
-            print("boo")
+            print("Error: next failed")
         self.ix += 1
         return item
 
@@ -261,6 +263,10 @@ class DataIterator:     # TODO: maybe not copy the array but access elements inp
 
 
 def mnist_example():
+    """
+    Runs a toy convolution example.
+    :return: None
+    """
     B_file = open('../data/b.pickle', 'rb')
     B = pickle.load(B_file)  # variables come out in the order you put them in
     B_file.close()

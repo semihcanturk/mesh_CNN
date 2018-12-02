@@ -1,8 +1,3 @@
-# Think about the adjacency matrix. First, enumerate the nodes (pixels) in a M x N ' \
-# image going down first, then right (e.g., first pixel in the second column gets id M+1). Now, consider a general point k ' \
-# (not in the boundary): it has edges with nodes (up) k-1, (down) k+1, (left) k-M, (right) k+M. Then, to build the full mesh,
-# you just need iterate over i=1,...,M and j=1,...,N making  k=(i-1)*M+j, k taking in account the border conditions
-# (i.e., when i==1, i==M, j==1, j==N) to not add the corresponding edges.
 import numpy as np
 from conv import convolution_impl, mnist
 import pickle
@@ -26,20 +21,11 @@ def load():
     # Load and process MNIST data
     print("Loading training data...")
 
-    add_color_channel = lambda x : x.reshape((x.shape[0], 1, x.shape[1], x.shape[2]))
-    one_hot = lambda x, K : np.array(x[:,None] == np.arange(K)[None, :], dtype=int)
-
-    ##############
-    #mnist.init()
+    mnist.init()    # run this only the first time the code is run
     train_images, train_labels, test_images, test_labels = mnist.load()
 
     train_images = train_images.reshape((train_images.shape[0], 1, 28, 28)) / 255.0
     test_images = test_images.reshape((test_images.shape[0], 1, 28, 28)) / 255.0
-
-
-
-    #train_images = train_images.reshape(train_images.shape[0], 28, 28)
-    #test_images = test_images.reshape(test_images.shape[0], 28, 28)
 
     train_images = train_images[:10000, :, :]
     train_labels = train_labels[:10000]
@@ -70,11 +56,10 @@ def load():
             coords.append([i, j, 0])
 
     coords = np.array(coords)
-    #adj_mtx, coords, faces
     return train_batch, train_labels, test_batch, test_labels, adj_mtx, coords
 
 
-def load_dynamic():
+def load_dynamic(n_ex=None):
 
     # image dimensions
     M = 28
@@ -85,127 +70,11 @@ def load_dynamic():
     # Load and process MNIST data
     print("Loading training data...")
 
-    add_color_channel = lambda x : x.reshape((x.shape[0], 1, x.shape[1], x.shape[2]))
-    one_hot = lambda x, K : np.array(x[:,None] == np.arange(K)[None, :], dtype=int)
-
-    #mnist.init()
+    mnist.init()  # run this only the first time the code is run
     train_images, train_labels, test_images, test_labels = mnist.load()
 
     train_images = train_images.reshape((train_images.shape[0], 1, 28, 28)) / 255.0
     test_images = test_images.reshape((test_images.shape[0], 1, 28, 28)) / 255.0
-
-    ##############
-
-    train_images = train_images[:500, :, :]
-    train_labels = train_labels[:500]
-    test_images = test_images[:50, :, :]
-    test_labels = test_labels[:50]
-
-
-    stime = time.time()
-
-    try:
-        with h5py.File('name-of-file.h5', 'r') as hf:
-            train_batch = hf['dyn_train'][:]
-            test_batch = hf['dyn_test'][:]
-
-        train_batch = train_batch.todense()
-        test_batch = test_batch.todense()
-    except (OSError, IOError) as e:
-
-        dyn_train = None
-        for img in train_images:
-            new_img = None
-            for i in range(0, H):
-                mask = np.zeros((1, img.shape[1], img.shape[2]))
-                mask[0, 2 * i] = 1
-                mask[0, 2 * i + 1] = 1
-                temp = np.multiply(mask, img)
-                if new_img is None:
-                    new_img = np.array([temp])
-                else:
-                    new_img = np.vstack((new_img, [temp]))
-            if dyn_train is None:
-                dyn_train = np.array([new_img])
-            else:
-                dyn_train = np.vstack((dyn_train, [new_img]))
-
-        dyn_test = None
-        for img in test_images:
-            new_img = None
-            for i in range(0, H):
-                mask = np.zeros((1, img.shape[1], img.shape[2]))
-                mask[0, 2 * i] = 1
-                mask[0, 2 * i + 1] = 1
-                temp = np.multiply(mask, img)
-                if new_img is None:
-                    new_img = np.array([temp])
-                else:
-                    new_img = np.vstack((new_img, [temp]))
-            if dyn_test is None:
-                dyn_test = np.array([new_img])
-            else:
-                dyn_test = np.vstack((dyn_test, [new_img]))
-
-        dyn_train = np.swapaxes(dyn_train, 1, 2)
-        dyn_test = np.swapaxes(dyn_test, 1, 2)
-
-        train_batch = convolution_impl.as_strided_dyn(dyn_train, 5, 1)
-        test_batch = convolution_impl.as_strided_dyn(dyn_test, 5, 1)
-
-        train_sparse = sparse.COO.from_numpy(train_batch)
-        test_sparse = sparse.COO.from_numpy(test_batch)
-
-        with h5py.File('dyn_sparse.h5', 'w') as hf:
-            hf.create_dataset('dyn_train', data=train_sparse)
-            hf.create_dataset('dyn_test', data=test_sparse)
-
-    etime = time.time()
-
-    print(etime-stime)
-
-    train_batch = train_batch.reshape(train_batch.shape[0], train_batch.shape[2],
-                                      train_batch.shape[3] * train_batch.shape[4],
-                                      train_batch.shape[5] * train_batch.shape[6])
-    test_batch = test_batch.reshape(test_batch.shape[0], test_batch.shape[2],
-                                    test_batch.shape[3] * test_batch.shape[4],
-                                    test_batch.shape[5] * test_batch.shape[6])
-
-    X = np.random.rand(M, N)
-
-    adj_mtx, Y = embed_mesh(X)
-
-    coords = []
-    for i in range(M):
-        for j in range(N):
-            coords.append([i, j, 0])
-
-    coords = np.array(coords)
-    #adj_mtx, coords, faces
-    return train_batch, train_labels, test_batch, test_labels, adj_mtx, coords
-
-
-def load_dynamic_2(n_ex=None):
-
-    # image dimensions
-    M = 28
-    N = 28
-
-    H = 14
-
-    # Load and process MNIST data
-    print("Loading training data...")
-
-    add_color_channel = lambda x : x.reshape((x.shape[0], 1, x.shape[1], x.shape[2]))
-    one_hot = lambda x, K : np.array(x[:,None] == np.arange(K)[None, :], dtype=int)
-
-    #mnist.init()
-    train_images, train_labels, test_images, test_labels = mnist.load()
-
-    train_images = train_images.reshape((train_images.shape[0], 1, 28, 28)) / 255.0
-    test_images = test_images.reshape((test_images.shape[0], 1, 28, 28)) / 255.0
-
-    ##############
 
     if n_ex is not None:
         train_images = train_images[:n_ex, :, :]
@@ -220,8 +89,6 @@ def load_dynamic_2(n_ex=None):
             train_batch = hf['dyn_train'][:]
             test_batch = hf['dyn_test'][:]
 
-        #train_batch = train_batch.todense()
-        #test_batch = test_batch.todense()
     except (OSError, IOError) as e:
 
         dyn_train = []
@@ -262,13 +129,6 @@ def load_dynamic_2(n_ex=None):
             hf.create_dataset('dyn_train', data=train_sparse, compression="gzip", compression_opts=9)
             hf.create_dataset('dyn_test', data=test_sparse, compression="gzip", compression_opts=9)
 
-        #hkl.dump(train_sparse, "dyn_train_sparse.hkl")
-        #hkl.dump(test_sparse, "dyn_test_sparse.hkl")
-
-
-        #pickle.dump(train_sparse, open("dyn_train_sparse.pickle", "wb"), protocol=4)
-        #pickle.dump(test_sparse, open("dyn_test_sparse.pickle", "wb"), protocol=4)
-
     etime = time.time()
 
     print(etime-stime)
@@ -290,7 +150,6 @@ def load_dynamic_2(n_ex=None):
             coords.append([i, j, 0])
 
     coords = np.array(coords)
-    #adj_mtx, coords, faces
     return train_batch, train_labels, test_batch, test_labels, adj_mtx, coords
 
 
@@ -309,9 +168,6 @@ def embed_mesh(X):
 
             # node id
             k = (j - 1) * M + i
-
-            # embedd image pixel on vector
-            #Y[k] = X[N, M]
 
             # edge north
             if i > 1:
@@ -332,7 +188,8 @@ def embed_mesh(X):
 def create_mtx(x):
     X = np.random.rand(x, x)
 
-    #adj_mtx, _ = embed_mesh(X)
+    # optional way to create adjacency matrix
+    # adj_mtx, _ = embed_mesh(X)
 
     w = pysal.lat2W(x, x)
     adj_mtx = np.array(w.full()[0])
@@ -343,7 +200,6 @@ def create_mtx(x):
             coords.append([i, j, 0])
 
     coords = np.array(coords)
-    # adj_mtx, coords, faces
     return adj_mtx, coords
 
 

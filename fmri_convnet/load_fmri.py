@@ -1,16 +1,20 @@
 import os
 import numpy as np
-import pandas as pd
 import nibabel as nib
-#import openmesh as om
 from numpy import genfromtxt
 from mesh import mesh_traversal
 from fmri import multiclass
-from fmri import data_preproc as dp
+from fmri import fmri_windowing as dp
 import matplotlib.pyplot as plt
 
 
 def load_all_examples():
+    """
+    Loads all fMRI patient files from directory. The files can be found in the open source Human Connectome Project,
+    in the "patientid_dense_tasks.mat" format. a "filenames.txt" that includes the files to be parsed in each line
+    should also be created. If loading a single file is desired, see load_single_example()
+    :return: parsed fmri files in train/test data and labels
+    """
     H, Gp, Gn = 15, 4, 4
 
     C, _, X_bar = dp.get_dataset('../fmri/all_subjects/', session='MOTOR_LR')
@@ -18,8 +22,6 @@ def load_all_examples():
 
     n_data = len(y)
     train_test_split = 0.8
-
-    #X = X[:, :, 0]
 
     y = y.astype(int)
 
@@ -48,23 +50,25 @@ def load_single_example():
     a_T = a.transpose()
     a_swap = np.swapaxes(a, 0, 1)
 
-    data_92 = a_swap[92]
-    data_93 = a_swap[93]
-    data_94 = a_swap[94]
+    # for plotting of the time series if desired
 
-    plt.figure(figsize=(20, 5))
-
-    plt.subplot(3, 1, 1)
-    plt.plot(data_92, linewidth=5)
-
-    plt.subplot(3, 1, 2)
-    plt.plot(data_93, linewidth=5)
-
-    plt.subplot(3, 1, 3)
-    plt.plot(data_94, linewidth=5)
-
-    plt.show()
-    plt.savefig('data.png')
+    # data_92 = a_swap[92]
+    # data_93 = a_swap[93]
+    # data_94 = a_swap[94]
+    #
+    # plt.figure(figsize=(20, 5))
+    #
+    # plt.subplot(3, 1, 1)
+    # plt.plot(data_92, linewidth=5)
+    #
+    # plt.subplot(3, 1, 2)
+    # plt.plot(data_93, linewidth=5)
+    #
+    # plt.subplot(3, 1, 3)
+    # plt.plot(data_94, linewidth=5)
+    #
+    # plt.show()
+    # plt.savefig('data.png')
 
 
     C = C.reshape(1, C.shape[0], C.shape[1])
@@ -112,19 +116,6 @@ def load():
         np.savetxt("faces.csv", faces_gii, delimiter=",")
 
     faces_gii = faces_gii.astype(int)
-    #mesh = om.TriMesh()
-
-    #verts = []
-    #for i in coords_gii:
-    #    verts.append(mesh.add_vertex(i))
-
-    #faces = []
-    #for i in faces_gii:
-    #    faces.append(mesh.add_face(verts[i[0]], verts[i[1]], verts[i[2]]))
-
-    #om.write_mesh('mesh.off', mesh)
-    #om.read_trimesh('mesh.off')
-
     adj_mtx, _, _ = mesh_traversal.create_adj_mtx(coords_gii, faces_gii, is_sparse=True)
 
     ###############

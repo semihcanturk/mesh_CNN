@@ -1,17 +1,17 @@
 import autograd.numpy as np
 import numpy as npo
 import pickle
-from mesh import mesh_traversal_deprecated, mesh_traversal, load_sphere
+from mesh import mesh_traversal, load_sphere
 import random
 from scipy import stats
 from numpy import linalg as LA
 
 """
-conv_debug.py
 This client script creates an adjacency matrix from existing data, strides the mesh and convolves the result
 with arbitrary data. These arbitrary filters (as well as the convolution values which are vertex IDs for now)
-will be replaced in later implementations.
+will be replaced in actual usages.
 """
+
 _author_ = "Semih Cantürk"
 _credits_ = "Cassiano Becker"
 

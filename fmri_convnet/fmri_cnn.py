@@ -1,5 +1,3 @@
-"""Convolutional neural net on MNIST, modeled on 'LeNet-5',
-http://yann.lecun.com/exdb/publis/pdf/lecun-98.pdf"""
 from __future__ import absolute_import
 from __future__ import print_function
 from builtins import range
@@ -448,10 +446,3 @@ if __name__ == '__main__':
                 print("Batch skipped")
             cur_dir = momentum * cur_dir + (1.0 - momentum) * grad_W
             W -= learning_rate * cur_dir
-
-        # for idxs in batch_idxs:
-        #     train_batch_idx = build_batch(idxs)
-        #
-        #     grad_W = loss_grad(W, train_batch_idx, train_labels_idx)
-        #     cur_dir = momentum * cur_dir + (1.0 - momentum) * grad_W
-        #     W -= learning_rate * cur_dir

@@ -248,9 +248,13 @@ if __name__ == '__main__':
 
     ##############
 
-    train_batch, train_labels, test_batch, test_labels, _, coords = load_mesquare.load_dynamic_2()
-    #adj_mtx, _ = load_mesquare.create_mtx(28)
-    adj_mtx = load_mesquare.load_csv(24)
+    train_batch, train_labels, test_batch, test_labels, _, coords = load_mesquare.load_dynamic()
+
+    try:
+        adj_mtx = load_mesquare.load_csv(24)
+    except:
+        adj_mtx, _ = load_mesquare.create_mtx(24)
+
 
     order = mesh_traversal.traverse_mtx(adj_mtx, coords, center, stride)  # list of vertices, ordered
     rem = set(range(28 * 28)).difference(set(order))

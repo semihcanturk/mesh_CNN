@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-#import matplotlib.pyplot as plt
 
 from sklearn import preprocessing
 from sklearn.decomposition import PCA
@@ -9,7 +8,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
 
-from fmri import data_preproc as dp
+from fmri import fmri_windowing as dp
 
 
 def encode(C, X, H, Gp, Gn):
@@ -121,22 +120,7 @@ def try_model(X, y, model):
     print(C)
     print()
     
-    return C_mat 
-    
-
-# def plot_encoding(C, Y):
-#     plt.figure()
-#     plt.title('label generation')
-#     plt.ylabel('class')
-#     plt.xlabel('t')
-#     plt.plot(Y[0,:], label='Y')
-#     plt.plot(C[0, 0, :] , label='LF')
-#     plt.plot(C[0, 1, :] , label='LH')
-#     plt.plot(C[0, 2, :] , label='RF')
-#     plt.plot(C[0, 3, :] , label='RH')
-#     plt.plot(C[0, 4, :] , label='T')
-#     plt.legend(loc=1)
-#     plt.show()
+    return C_mat
 
 
 def main():
