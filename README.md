@@ -55,3 +55,5 @@ Includes a script to create a 3D mesh from a surface file.
 
 **array_extraction.py:** Script to transform brain surface data to arrays that contain vertex coordinates and triplets 
 for mesh faces.
+
+![alt text](./figures/FIG1.png)
