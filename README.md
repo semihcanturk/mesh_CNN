@@ -8,9 +8,9 @@ Semih Cantürk<sup>1</sup>, Cassiano Becker<sup>1</sup>, Edward Benjamin Fineran
 
 **1** University of Pennsylvania, Department of Electrical and Systems Engineering (Philadelphia, PA, United States); **2** University of Pennsylvania, Department of Computer and Information Science (Philadelphia, PA, United States)
 
-# 1. Abstract
+## 1. Abstract
 
-# 2. Introduction
+## 2. Introduction
 
 Convolutional neural networks (Krizhevsky et al. 2012; LeCun & Bengio 1998) have been the leading method in solving pattern recognition problems in the recent years. CNNs use of shared filters render them location invariant, meaning they can detect and recognize local feature regardless of their positions in the visual field. The conventional CNN approaches are also translatable into three dimensions (3D) in cases where the detection of spatial and/or temporal relations in the third dimension is trivial; such is the case with pattern detection in dynamic images and 3D volume. However, a trivial translation is not possible in dynamic 3D polygon meshes, where the problem at hand involves irregular polygonal surface structures in 3D space as well as temporal relations over the 3D space.
 
@@ -18,9 +18,9 @@ In neuroimaging, a common and interpretable way of visualizing cerebral activity
 
 This article proposes a form of CNN that is adapted to pattern recognition in spatiotemporal 3D triangular mesh data, referred as the mesh CNN (mCNN); it also examines in depth the translation of spatiotemporal fMRI data from 3D cortical visualization into regular data structures that a multi-layer mCNN is able to make use of, while simultaneously preserving the spatiotemporal relations essential for the discriminative ability of the model. The cortical mesh is first treated as an icosahedral sphere, to which it is analogous in terms of both topology and triangular mesh structure. The mCNN is then designed to traverse and preprocess the mesh, and apply subsequent convolutions and pooling in order to detect detect patterns both in 3D space and in time. This mCNN is then applied on a motor task classification problem derived from the Human Connectome Project (HCP; Elam & Van Essen 2013). The mCNN is then compared in classification accuracy to a two-layer MLP, which had been used in previous work for the same discriminatory task.
 
-# 3. Method
+## 3. Method
 
-## 3.1. Mesh CNN 
+### 3.1. Mesh CNN 
 
 In high-level architecture, the mCNN is analogous to conventional CNNs: it is composed of repeating convolutional and pooling layers, followed by full layers with a softmax output layer. However, the main differentiators of the mCNN from the conventional CNN are the low-level implementations of the convolutional layers and the mesh pooling layers. While the traditional convolution and pooling layers deal with 2D data in multidimensional array form which are then trivially treated as tensors, the mCNN convolution and pooling layers involve low level architectural adaptations to 3D mesh data in time series form in order to build the tensors.
 
@@ -28,7 +28,7 @@ In high-level architecture, the mCNN is analogous to conventional CNNs: it is co
 
 </div>
 
-### 3.1.1. Convolution Layer 
+#### 3.1.1. Convolution Layer 
 
 In conventional CNNs, the convolution filters are defined by regular shapes; a square is often used due to its trivial translatability to 2D array data structures. These filters are then convolved samples from the data which are congruent, which are called “patches". This sampling operation is referred to as “striding”, where patches from data are called iteratively in a predefined order.
 
@@ -55,7 +55,7 @@ Then, to account for the time dimension, a time window H is selected **(Figures 
 
 </div>
 
-### 3.1.2. Pooling Layer
+#### 3.1.2. Pooling Layer
 
 In the mCNN, the convolution layers are followed by the pooling layers which downsample the outputs of the convolution process. This is done in order to reduce the dimensionality of the data, curbing potential overfitting and reducing the computational cost of the mCNN. The mCNN pooling process is centered around the triangular structure of the surface mesh. **Figures 1A** and **2A** provide close-ups of the mesh structure: each vertex is connected to six other vertices, forming six triangle faces. When pooling, each vertex is assigned to a vertex “group” of seven vertices, with center points being equidistant in terms of graph distance so that the groups do not overlap and pooling is homogeneous. This pooling of seven vertices into one reduce the number of vertices in the mesh by a factor of six per pooling layer. The original surface mesh is composed of 32,492 vertices; this number reduces to approximately 5400 after the first convolution and pooling, and to 900 after the second, excluding a small number of vertices associated with irregularities in the mesh. **Figure 2B** demonstrates this pooling process both in vertex-level and mesh-level. In the study, we tested both max pooling and mean pooling approaches, and found mean pooling to perform slightly better on average.
 
@@ -65,17 +65,27 @@ In the mCNN, the convolution layers are followed by the pooling layers which dow
 
 </div>
 
-<div id="MPFootnotesElement:F4201C44-1747-4592-90D9-B48A64410730">
+### 3.2. Implementation
 
-<div id="MPFootnote:AD5F401B-33E5-45BB-E723-DC072296496D-contents">
+The mCNN implementation was based on the HIPS Convnet, which in turn is a CNN built for MNIST modeled on the LeNet-5 <span class="citation" data-reference-id="MPCitation:7FA37B1B-CAA6-49C8-A405-7E883C089B4C">(LeCun et al. 1998, p. )</span>. The current architecture consists of two convolution and pooling layer pairs, followed by two dense layers and a softmax output - the architecture is shown in detail **Figure 1C**. As mentioned in Section 3.1.2, mean pooling was preferred over max pooling in the pooling layers. The network uses conventional backpropagation and batch gradient descent. It is important to note that this architecture is currently suboptimal, and several architectural changes are proposed and investigated to improve mCNN performance. This section will be updated with the appropriate changes once implemented. The proposed changes are as follows:
 
-https://humanconnectome.org
+* Deepening the network to more than two convolution-pooling layer pairs.
 
-</div>
+* Adding normalization and ReLU units between the convolution and pooling layers.
 
-</div>
+* Further hyper-parameter optimization after the aforementioned changes are implemented: batch size, learning rate etc.
 
-# 7. Bibliography
+### 3.3. ## Applications to Motor Task Classification
+
+The implemented mCNN was then applied to a motor task classification problem using cortical fMRI activation time series from healthy adults, obtained from the HCP database. The experiment data was collected as follows: Subjects were given cues to move different body parts (left hand, left foot, right hand, right foot, tongue) during their fMRI scanning. The timings of the cues as well as a small portion of fMRI data can be found in **Figure 1A**. The the scans then measure the hemodynamic response of discrete brain regions corresponding to each cortical mesh point, by a technique known as blood-oxygen-level dependent (BOLD) imaging. BOLD imaging is based on the differentiating the magnetic properties of oxygenated and deoxygenated blood; as active areas of the brain require more energy, resulting in different ratios of oxygenated and deoxygenated blood which are then detected by the fMRI scan.
+
+The cortical surface possesses the same topology as a sphere, enabling direct applicability of the mCNN to the cortical surface mesh. In the HCP data, this surface mesh is icosahedral, and consists of 32,492 data points per hemisphere. The activation values for each data point are evaluated in every time step, where any two time steps are 0.72 seconds apart. Each experiment per patient involves 284 time steps. The activation data is then normalized for each point.
+
+This classification problem was previously explored through a MLP approach. A two-layer MLP with dropout and softmax output was used, with the best performing configuration having (400, 100) nodes for the respective layers.
+
+
+
+## 7. Bibliography
 
 <div id="MPBibliographyElement:95E9ED74-DED9-42FD-E2E4-2FABD2E55D29">
 
