@@ -75,7 +75,7 @@ The mCNN implementation was based on the HIPS Convnet, which in turn is a CNN bu
 
 * Further hyper-parameter optimization after the aforementioned changes are implemented: batch size, learning rate etc.
 
-### 3.3. ## Applications to Motor Task Classification
+### 3.3. Applications to Motor Task Classification
 
 The implemented mCNN was then applied to a motor task classification problem using cortical fMRI activation time series from healthy adults, obtained from the HCP database. The experiment data was collected as follows: Subjects were given cues to move different body parts (left hand, left foot, right hand, right foot, tongue) during their fMRI scanning. The timings of the cues as well as a small portion of fMRI data can be found in **Figure 1A**. The the scans then measure the hemodynamic response of discrete brain regions corresponding to each cortical mesh point, by a technique known as blood-oxygen-level dependent (BOLD) imaging. BOLD imaging is based on the differentiating the magnetic properties of oxygenated and deoxygenated blood; as active areas of the brain require more energy, resulting in different ratios of oxygenated and deoxygenated blood which are then detected by the fMRI scan.
 
