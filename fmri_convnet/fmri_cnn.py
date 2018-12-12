@@ -13,6 +13,7 @@ import pickle
 import h5py
 import pandas as pd
 from sklearn.metrics import confusion_matrix
+from numpy import genfromtxt
 
 
 center = 93
@@ -50,18 +51,45 @@ def make_batches(N_total, N_batch):
         start += N_batch
     return batches, batches_labels
 
-def build_batch(idxs):
-    with h5py.File('zero_train.h5', 'r') as hf:
-        zero_train = hf['train'][:, idxs]
-    with h5py.File('one_train.h5', 'r') as hf:
-        one_train = hf['train'][:, idxs]
-    with h5py.File('two_train.h5', 'r') as hf:
-        two_train = hf['train'][:, idxs]
-    with h5py.File('three_train.h5', 'r') as hf:
-        three_train = hf['train'][:, idxs]
+
+def build_batch(idxs, cache=None):
+    try:
+        with h5py.File('train_0.h5', 'r') as hf:
+            zero_train = hf['train'][:, idxs]
+        with h5py.File('train_1.h5', 'r') as hf:
+            one_train = hf['train'][:, idxs]
+        with h5py.File('train_2.h5', 'r') as hf:
+            two_train = hf['train'][:, idxs]
+        with h5py.File('train_3.h5', 'r') as hf:
+            three_train = hf['train'][:, idxs]
+    except:
+        ct_train = train_images.shape[0]
+        for i in range(4):
+
+            print(datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
+
+            data = train_images[(i*int(ct_train/4)):((i+1)*int(ct_train/4))]
+            train_batch = mesh_traversal.mesh_strider_batch(adj_mtx, data, coords, faces, center, r, stride, cache)
+
+            if i == 0:
+                with h5py.File('train_0.h5', 'w') as hf:
+                    hf.create_dataset("train", data=train_batch)
+            elif i == 1:
+                with h5py.File('train_1.h5', 'w') as hf:
+                    hf.create_dataset("train", data=train_batch)
+            elif i == 2:
+                with h5py.File('train_2.h5', 'w') as hf:
+                    hf.create_dataset("train", data=train_batch)
+            elif i == 3:
+                with h5py.File('train_3.h5', 'w') as hf:
+                    hf.create_dataset("train", data=train_batch)
+
+
+
+
+
 
     tr_batch = np.concatenate((zero_train, one_train, two_train, three_train), axis=1)
-    #tr_batch = np.expand_dims(tr_batch, axis=1)
 
     tr_batch = np.swapaxes(tr_batch, 1, 0)
     tr_batch = np.swapaxes(tr_batch, 1, 5)
@@ -183,12 +211,12 @@ class maxpool_layer(object):
         self.pool_shape = pool_shape
 
     def build_weights_dict(self, input_shape):
-        # input_shape dimensions: [color, y, x]
         output_shape = list(input_shape)
         for i in [0]:
-            assert input_shape[i + 1] % self.pool_shape[i] == 0, \
-                "maxpool shape should tile input exactly"
-            output_shape[i + 1] = int((input_shape[i + 1] + 6) / (self.pool_shape[i]-2))
+            #assert input_shape[i + 1] % self.pool_shape[i] == 0, \
+            #    "maxpool shape should tile input exactly"
+            output_shape[i + 1] = 5356 #TODO: Generalize
+            # int((input_shape[i + 1] + 6) / (self.pool_shape[i]-2))
         return 0, output_shape
 
     def forward_pass(self, inputs, param_vector):
@@ -204,6 +232,34 @@ class maxpool_layer(object):
         #     adj_mtx = m0
         #     coords = np.array(v0)
         #     order = o0
+
+        coords_new, faces_new = mesh_traversal.read_off('../mesh/new_mesh.off')
+        coords_new = np.array(coords_new)
+        faces_new = np.array(faces_new)[:, 1:]
+        #order = mesh_traversal.traverse_mesh(coords_new, faces_new, center=50)
+        #np.savetxt("neighs_order.csv", np.array(order), delimiter=",")
+        pool_map = genfromtxt('../mesh/neighs.csv', delimiter=',')
+        pool_map = list(map(int, pool_map))
+
+        patches = []
+        for i in range(coords_new.shape[0]): #order:
+            org_vert = int(pool_map[i])
+            neighs = mesh_traversal.get_neighs(adj_mtx, coords, org_vert, 1)
+            patch = inputs[:, :, neighs]
+            patch = np.mean(patch, axis=2)
+            patches.append(patch)
+
+        out = np.array(patches)
+        out = np.swapaxes(out, 0, 1)      #TODO: MAKE SURE THIS WORKS
+        out = np.swapaxes(out, 1, 2)
+
+        return out
+
+
+
+
+
+
         new_shape = inputs.shape[:2]
         for i in [0]:
             pool_width = self.pool_shape[i]
@@ -244,6 +300,7 @@ class full_layer(object):
     def forward_pass(self, inputs, param_vector):
         params = self.parser.get(param_vector, 'params')
         biases = self.parser.get(param_vector, 'biases')
+
         if inputs.ndim > 2:
             inputs = inputs.reshape((inputs.shape[0], np.prod(inputs.shape[1:])))
         return self.nonlinearity(np.dot(inputs[:, :], params) + biases)
@@ -261,9 +318,9 @@ if __name__ == '__main__':
 
     # Network parameters
     L2_reg = 1.0
-    input_shape = (1, 15, 30886, 7)
+    input_shape = (1, 15, 32492, 7)
     layer_specs = [init_conv_layer((7,), 100),
-                   #maxpool_layer((6,)),
+                   maxpool_layer((6,)),
 
                    #conv_layer((7,), 2),
                    #maxpool_layer((6,)),
@@ -276,7 +333,7 @@ if __name__ == '__main__':
     param_scale = 0.1
     learning_rate = 1e-3
     momentum = 0.9
-    batch_size = 150
+    batch_size = 50
     num_epochs = 50
 
     # Load and process mesh data
@@ -315,8 +372,20 @@ if __name__ == '__main__':
     #adj_mtx, mesh_vals, coords, faces = generate_sphere_data.generate(1000)
     coords = np.array(coords)
 
-    #train_images = np.expand_dims(train_images, axis=1) #/ 255
+    train_images = np.expand_dims(train_images, axis=1) #/ 255
     test_images = np.expand_dims(test_images, axis=1) #/ 255
+
+    train_batch_sample = None
+    cache = None
+    try:
+        with h5py.File('train_0.h5', 'r') as hf:
+            train_batch_sample = hf['train'][:]
+        with h5py.File('test.h5', 'r') as hf:
+            test_batch = hf['test'][:]
+    except:
+        test_batch, cache = mesh_traversal.mesh_strider_batch(adj_mtx, test_images, coords, faces, center, r, stride, dict())
+        with h5py.File('test.h5', 'w') as hf:
+            hf.create_dataset("test", data=test_batch)
 
     # try:
     #     with h5py.File('zero_train.h5', 'r') as hf:
@@ -330,40 +399,24 @@ if __name__ == '__main__':
     # except:
     #     ct_train = train_images.shape[0]
     #     for i in range(4):
+    #
+    #         print(datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
+    #
     #         data = train_images[(i*int(ct_train/4)):((i+1)*int(ct_train/4))]
-    #         train_batch = mesh_traversal.mesh_strider_batch(adj_mtx, data, coords, faces, center, r, stride)
+    #         train_batch = mesh_traversal.mesh_strider_batch(adj_mtx, data, coords, faces, center, r, stride, cache)
     #
     #         if i == 0:
-    #             with h5py.File('zero_train.h5', 'w') as hf:
+    #             with h5py.File('train_0.h5', 'w') as hf:
     #                 hf.create_dataset("train", data=train_batch)
     #         elif i == 1:
-    #             with h5py.File('one_train.h5', 'w') as hf:
+    #             with h5py.File('train_1.h5', 'w') as hf:
     #                 hf.create_dataset("train", data=train_batch)
     #         elif i == 2:
-    #             with h5py.File('two_train.h5', 'w') as hf:
+    #             with h5py.File('train_2.h5', 'w') as hf:
     #                 hf.create_dataset("train", data=train_batch)
     #         elif i == 3:
-    #             with h5py.File('three_train.h5', 'w') as hf:
+    #             with h5py.File('train_3.h5', 'w') as hf:
     #                 hf.create_dataset("train", data=train_batch)
-
-    try:
-
-        with h5py.File('zero_train.h5', 'r') as hf:
-            train_batch_sample = hf['train'][:]
-        with h5py.File('strided_test.h5', 'r') as hf:
-            test_batch = hf['test'][:]
-    except:
-        test_batch = mesh_traversal.mesh_strider_batch(adj_mtx, test_images, coords, faces, center, r, stride)
-        with h5py.File('strided_test.h5', 'w') as hf:
-            hf.create_dataset("test", data=test_batch)
-
-    # train_batches = [zero_train, one_train, two_train, three_train]
-    #
-    # for i in len(train_batches):
-    #     train_batches[i] = np.swapaxes(train_batches[i], 1, 0)
-    #     train_batches[i] = np.swapaxes(train_batches[i], 1, 5)
-    #     train_batches[i] = np.swapaxes(train_batches[i], 4, 5)
-    #     train_batches[i] = np.squeeze(train_batches[i], axis=(2, 3))
 
     train_batch_sample = np.swapaxes(train_batch_sample, 1, 0)
     train_batch_sample = np.swapaxes(train_batch_sample, 1, 5)
@@ -415,14 +468,11 @@ if __name__ == '__main__':
     batch_idxs, label_idx = make_batches(N_data, batch_size)
     cur_dir = np.zeros(N_weights)
 
-    #start = time.time()
-    #sdate = datetime.datetime.fromtimestamp(start).strftime('%Y-%m-%d %H:%M:%S')
-    #print(sdate)
-
     stime = time.time()
-    print(stime-stime0)
+
     for epoch in range(num_epochs):
-        print_perf(epoch, W)
+        if epoch > 0:
+            print_perf(epoch, W)
         if epoch == num_epochs - 1:
             etime = time.time()
             print(etime-stime)
@@ -435,14 +485,21 @@ if __name__ == '__main__':
             train_labels_idx_3 = train_labels[label_idx[i * 4 + 2]]
             train_labels_idx_4 = train_labels[label_idx[i * 4 + 3]]
 
+            if i == len(batch_idxs)-1:
+                train_labels_idx_1 = train_labels_idx_1[:train_labels_idx_4.shape[0], :]
+                train_labels_idx_2 = train_labels_idx_2[:train_labels_idx_4.shape[0], :]
+                train_labels_idx_3 = train_labels_idx_3[:train_labels_idx_4.shape[0], :]
+
+
             train_labels_idx = train_labels_idx_1
             train_labels_idx = np.append(train_labels_idx, train_labels_idx_2, axis=0)
             train_labels_idx = np.append(train_labels_idx, train_labels_idx_3, axis=0)
             train_labels_idx = np.append(train_labels_idx, train_labels_idx_4, axis=0)
 
-            try:
-                grad_W = loss_grad(W, train_batch_idx, train_labels_idx)
-            except:
-                print("Batch skipped")
+            #try:
+            grad_W = loss_grad(W, train_batch_idx, train_labels_idx)
             cur_dir = momentum * cur_dir + (1.0 - momentum) * grad_W
             W -= learning_rate * cur_dir
+            #except:
+            #    print("Batch skipped")
+                #cur_dir = 0

@@ -18,6 +18,12 @@ In neuroimaging, a common and interpretable way of visualizing cerebral activity
 
 This article proposes a form of CNN that is adapted to pattern recognition in spatiotemporal 3D triangular mesh data, referred as the mesh CNN (mCNN); it also examines in depth the translation of spatiotemporal fMRI data from 3D cortical visualization into regular data structures that a multi-layer mCNN is able to make use of, while simultaneously preserving the spatiotemporal relations essential for the discriminative ability of the model. The cortical mesh is first treated as an icosahedral sphere, to which it is analogous in terms of both topology and triangular mesh structure. The mCNN is then designed to traverse and preprocess the mesh, and apply subsequent convolutions and pooling in order to detect detect patterns both in 3D space and in time. This mCNN is then applied on a motor task classification problem derived from the Human Connectome Project (HCP; Elam & Van Essen 2013). The mCNN is then compared in classification accuracy to a two-layer MLP, which had been used in previous work for the same discriminatory task.
 
+<div id="MPFigureElement:FCFFB5DF-C200-4B80-CB8E-860A6C7473D5">
+
+![alt text](./figures/FIG1.png)
+
+</div>
+
 ## 3. Method
 
 ### 3.1. Mesh CNN 
@@ -32,14 +38,14 @@ In high-level architecture, the mCNN is analogous to conventional CNNs: it is co
 
 In conventional CNNs, the convolution filters are defined by regular shapes; a square is often used due to its trivial translatability to 2D array data structures. These filters are then convolved samples from the data which are congruent, which are called “patches". This sampling operation is referred to as “striding”, where patches from data are called iteratively in a predefined order.
 
-The mCNN convolutions associate each data point with a patch, defined by all nodes within a specific graph distance from the point, ordered by a) graph distance from the center node which contains the associated data value, and b)the following ordering for nodes of the same graph distance/order:
+The mCNN defines this convolution operation as a _vertex domain mesh convolution_. The convolutions associate each data point with a patch, defined by all vertices within a specific graph distance from the point, ordered by a) graph distance from the center vertex which contains the associated data value, and b)the following ordering for vertices of the same graph distance/order:
 
-1.  The node with the closest euclidean distance in 3D, node A, is queued first.
-2.  At this point, the nodes of the same order will form a circle, with each node having two neighbors of the same order. Then, of its two neighbors, the one with the closest euclidean distance to node A is queued, determining whether the order is clockwise or counterclockwise.
-3.  From then on, the order is trivial. In the direction defined in 2), all unvisited nodes are visited in order.
-4.  The list of all unseen neighbors of the nodes from the current layer is delegated as the next layer.
+1.  The vertex with the closest euclidean distance in 3D, vertex A, is queued first.
+2.  At this point, the verticess of the same order will form a circle, with each vertex having two neighbors of the same order. Then, of its two neighbors, the one with the closest euclidean distance to vertex A is queued, determining whether the order is clockwise or counterclockwise.
+3.  From then on, the order is trivial. In the direction defined in 2), all unvisited vertices are visited in order.
+4.  The list of all unseen neighbors of the vertices from the current layer is delegated as the next layer.
 
-Then, to account for the time dimension, a time window H is selected **(Figures 1, 2A)**: The convolution tensor for one example contains the patches from all nodes, for all time samples within the time window H. Multiple examples (270 for our motor task classification experiment) are generated from a single patient by slicing running windows of width H through the patient data, which include 284 consecutive time samples **(Figure 1A)**. The convolution tensors are constructed by flattening the patch dimension for each node n to form a row vector. This results in a (l \\times N \\times H) tensor, where l is the length of a single patch and Nis the total number of nodes in the mesh. A single HCP patient data then produces 270 of these tensors. Each filter then also assumes the (l \\times H) shape, with the convolutional layer possessing f number of filters. The convolution operation then, dimensionally speaking, takes place as the following:
+Then, to account for the time dimension, a time window H is selected **(Figures 1, 2A)**: The convolution tensor for one example contains the patches from all vertices, for all time samples within the time window H. Multiple examples (270 for our motor task classification experiment) are generated from a single patient by slicing running windows of width H through the patient data, which include 284 consecutive time samples **(Figure 1A)**. The convolution tensors are constructed by flattening the patch dimension for each vertex n to form a row vector. This results in a (l \\times N \\times H) tensor, where l is the length of a single patch and Nis the total number of vertices in the mesh. A single HCP patient data then produces 270 of these tensors. Each filter then also assumes the (l \\times H) shape, with the convolutional layer possessing f number of filters. The convolution operation then, dimensionally speaking, takes place as the following:
 
 <div id="MPEquationElement:C465A36C-87B5-45AF-BBC9-9CE1B0736758">
 
@@ -47,23 +53,17 @@ Then, to account for the time dimension, a time window H is selected **(Figures 
 
 </div>
 
-**Figure 1A** demonstrates the spatiotemporal nature of the data: Each node has a position in 3D space and is connected to neighbor nodes via edges, and also contains a vector of 284 consecutive fMRI activation values that change over time. It also includes information about the HCP experiment procedure; the activation over time plot shows when the cues are given to the subjects, and which body part was moved with each cue**.** **Figure 1A** is then connected to **Figure 1B** by showing how a H second window is translated into a tensor dimension. **1B** also visualizes the tensor operations in the convolution layer, while **Figure 2A** illustrates the implementation of this tensorization process in detail. **Figure 1C t**hen displays the high-level architecture of the mCNN, which is very similar to that of a conventional CNN.
-
-<div id="MPFigureElement:FCFFB5DF-C200-4B80-CB8E-860A6C7473D5">
-
-![alt text](./figures/FIG1.png)
-
-</div>
-
-#### 3.1.2. Pooling Layer
-
-In the mCNN, the convolution layers are followed by the pooling layers which downsample the outputs of the convolution process. This is done in order to reduce the dimensionality of the data, curbing potential overfitting and reducing the computational cost of the mCNN. The mCNN pooling process is centered around the triangular structure of the surface mesh. **Figures 1A** and **2A** provide close-ups of the mesh structure: each vertex is connected to six other vertices, forming six triangle faces. When pooling, each vertex is assigned to a vertex “group” of seven vertices, with center points being equidistant in terms of graph distance so that the groups do not overlap and pooling is homogeneous. This pooling of seven vertices into one reduce the number of vertices in the mesh by a factor of six per pooling layer. The original surface mesh is composed of 32,492 vertices; this number reduces to approximately 5400 after the first convolution and pooling, and to 900 after the second, excluding a small number of vertices associated with irregularities in the mesh. **Figure 2B** demonstrates this pooling process both in vertex-level and mesh-level. In the study, we tested both max pooling and mean pooling approaches, and found mean pooling to perform slightly better on average.
-
 <div id="MPFigureElement:0371341F-7701-456D-A24A-EDAA49A57EA3">
 
 ![alt text](./figures/FIG2.png)
 
 </div>
+
+**Figure 1A** demonstrates the spatiotemporal nature of the data: Each vertex has a position in 3D space and is connected to neighbor vertices via edges, and also contains a vector of 284 consecutive fMRI activation values that change over time. It also includes information about the HCP experiment procedure; the activation over time plot shows when the cues are given to the subjects, and which body part was moved with each cue**.** **Figure 1A** is then connected to **Figure 1B** by showing how a H second window is translated into a tensor dimension. **1B** also visualizes the tensor operations in the convolution layer, while **Figure 2A** illustrates the implementation of this tensorization process in detail. **Figure 1C t**hen displays the high-level architecture of the mCNN, which is very similar to that of a conventional CNN.
+
+#### 3.1.2. Pooling Layer
+
+In the mCNN, the convolution layers are followed by the pooling layers which downsample the outputs of the convolution process. This is done in order to reduce the dimensionality of the data, curbing potential overfitting and reducing the computational cost of the mCNN. The mCNN pooling process is centered around the triangular structure of the surface mesh. **Figures 1A** and **2A** provide close-ups of the mesh structure: each vertex is connected to six other vertices, forming six triangle faces. When pooling, each vertex is assigned to a vertex “group” of seven vertices, with center points being equidistant in terms of graph distance so that the groups do not overlap and pooling is homogeneous. This pooling of seven vertices into one reduce the number of vertices in the mesh by a factor of six per pooling layer. The original surface mesh is composed of 32,492 vertices; this number reduces to approximately 5400 after the first convolution and pooling, and to 900 after the second, excluding a small number of vertices associated with irregularities in the mesh. **Figure 2B** demonstrates this pooling process both in vertex-level and mesh-level. In the study, we tested both max pooling and mean pooling approaches, and found mean pooling to perform slightly better on average.
 
 ### 3.2. Implementation
 

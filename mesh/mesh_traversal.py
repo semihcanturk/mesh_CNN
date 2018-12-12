@@ -1,4 +1,4 @@
-#import os
+import os
 #os.environ['ETS_TOOLKIT'] = 'qt4'
 import openmesh as om
 import autograd.numpy as np
@@ -11,6 +11,7 @@ from scipy import sparse
 import itertools
 import functools
 import pickle
+
 import h5py
 
 
@@ -697,9 +698,10 @@ def mesh_strider(adj_mtx, mesh_vals, coords, faces, center, radius, stride):
     return patches
 
 
-def mesh_strider_batch(adj_mtx, vals_list, coords, faces, center, r, stride):
+def mesh_strider_batch(adj_mtx, vals_list, coords, faces, center, r, stride, cache):
     """
     Returns a list of patches after traversing and obtaining the patches for each mesh
+    :param cache:
     :param adj_mtx: adjacency matrix of the mesh
     :param coords:  coordinates of each vertes
     :param faces:   the vertices in each triangle of the mesh
@@ -710,38 +712,58 @@ def mesh_strider_batch(adj_mtx, vals_list, coords, faces, center, r, stride):
     """
     out = []
     stime = time.time()
-    try:
-        vertices = pickle.load(open("vertices.pkl", "rb"))
-    except:
-        vertices = traverse_mesh(coords, faces, center, stride=stride, verbose=False, is_sparse=True)
-        # If a full list is desiered, append non-traversed vertices to the end.
-
-        # rem = set(range(vals_list[0].shape[1])).difference(set(vertices))
-        # vertices = vertices + list(rem)
-
-        with open('vertices.pkl', 'wb') as f:
-            pickle.dump(vertices, f)
+    # try:
+    #     vertices = pickle.load(open("vertices.pkl", "rb"))
+    # except:
+    #     vertices = traverse_mesh(coords, faces, center, stride=stride, verbose=False, is_sparse=True)
+    #     # If a full list is desiered, append non-traversed vertices to the end.
+    #
+    #     # rem = set(range(vals_list[0].shape[1])).difference(set(vertices))
+    #     # vertices = vertices + list(rem)
+    #
+    #     with open('vertices.pkl', 'wb') as f:
+    #         pickle.dump(vertices, f)
 
     mtime = time.time()
     print(mtime-stime)
 
-    neigh_list = dict()
-    for v in vertices:
-        neighs = get_neighs(adj_mtx, coords, v, r)
-        neigh_list[v] = neighs
+    if cache is None:
+        for v in range(vals_list.shape[2]): #vertices:
+            neighs = get_neighs(adj_mtx, coords, v, r)
 
-        x = vals_list[:, :, [neighs], :]
-        if len(neighs) < 7:
-            temp = npo.zeros((x.shape[0], x.shape[1], 1, 7-len(neighs), x.shape[4]))
-            x = npo.append(x, temp, axis=3)
-        out.append(x)
+            x = vals_list[:, :, [neighs], :]
+            if len(neighs) < 7:
+                temp = npo.zeros((x.shape[0], x.shape[1], 1, 7-len(neighs), x.shape[4]))
+                x = npo.append(x, temp, axis=3)
+            out.append(x)
 
-    etime = time.time()
-    print(etime-mtime)
+        etime = time.time()
+        print(etime-mtime)
 
-    out = np.array(out)
+        out = np.array(out)
 
-    return out
+        return out
+
+    else:
+        for v in range(vals_list.shape[2]):
+            try:
+                neighs = cache[v]
+            except:
+                neighs = get_neighs(adj_mtx, coords, v, r)
+                cache[v] = neighs
+
+            x = vals_list[:, :, [neighs], :]
+            if len(neighs) < 7:
+                temp = npo.zeros((x.shape[0], x.shape[1], 1, 7 - len(neighs), x.shape[4]))
+                x = npo.append(x, temp, axis=3)
+            out.append(x)
+
+        etime = time.time()
+        print(etime - mtime)
+
+        out = np.array(out)
+
+        return out, cache
 
 
 def mesh_convolve(filters, adj_mtx, vals_list, coords, faces, center, r, stride):
@@ -810,7 +832,7 @@ def mesh_convolve_iter(a, adj_mtx, vals_list, coords, faces, center, r, stride):
     """
 
     a_dims = a.shape
-    strided_mesh = mesh_strider_batch(adj_mtx, vals_list, coords, faces, center, r, stride)
+    strided_mesh = mesh_strider_batch(adj_mtx, vals_list, coords, faces, center, r, stride, )
     mdi = MeshDataIterator(strided_mesh)
 
     out = []    #TODO: Consider dividing by norm
@@ -851,7 +873,7 @@ def tensorize_and_convolve_mesh(a, adj_mtx, vals_list, coords, faces, center, r,
     #with open('conv_objects.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
     #    pickle.dump([filters, adj_mtx, vals_list, coords, faces, center, r, stride], f)
 
-    strided_mesh = mesh_strider_batch(adj_mtx, vals_list, coords, faces, center, r, stride)
+    strided_mesh = mesh_strider_batch(adj_mtx, vals_list, coords, faces, center, r, stride, )
     try:
         out = npo.einsum(a, [0, 1, 2], strided_mesh, [3, 4, 2])
     except:
@@ -925,3 +947,95 @@ class MeshDataIterator:
 
     def reset(self):
         self.ix = 0
+
+
+def read_off(file):
+    """
+    Reads vertices and faces from an off file.
+
+    :param file: path to file to read
+    :type file: str
+    :return: vertices and faces as lists of tuples
+    :rtype: [(float)], [(int)]
+    """
+
+    #assert os.path.exists(file)
+
+    with open(file, 'r') as fp:
+        lines = fp.readlines()
+        lines = [line.strip() for line in lines]
+
+        assert lines[0] == 'OFF'
+
+        parts = lines[1].split(' ')
+        assert len(parts) == 3
+
+        num_vertices = int(parts[0])
+        assert num_vertices > 0
+
+        num_faces = int(parts[1])
+        assert num_faces > 0
+
+        vertices = []
+        for i in range(num_vertices):
+            vertex = lines[2 + i].split(' ')
+            vertex = [float(point) for point in vertex]
+            assert len(vertex) == 3
+
+            vertices.append(vertex)
+
+        faces = []
+        for i in range(num_faces):
+            face = lines[2 + num_vertices + i].split(' ')
+            face = [int(index) for index in face]
+
+            assert face[0] == len(face) - 1
+            for index in face:
+                assert index >= 0 and index < num_vertices
+
+            assert len(face) > 1
+
+            faces.append(face)
+
+        return vertices, faces
+
+
+def save_closest(vertex, new_coords, coords):
+    v, _ = read_off('./new_mesh.off')
+    coords = genfromtxt('../data/data0.csv', delimiter=',')
+    closest_list = []
+    for i in v:
+        dist = 100
+        ix = None
+        for j in coords:
+            temp = (i[0]-j[0])**2 + (i[1]-j[1])**2 + (i[2]-j[2])**2
+            if temp < dist:
+                dist = temp
+                ix = np.where(coords == j)[0][0]
+        closest_list.append(ix)
+
+    npo.savetxt("neighs.csv", np.array(closest_list), delimiter=",")
+
+
+def get_closest(adj_mtx_org, coords_org, inputs):
+
+
+    coords, faces = read_off('./new_mesh.off')
+    coords = np.array(coords)
+    faces = np.array(faces)[:, 1:]
+    order = traverse_mesh(coords, faces, center=50)
+    npo.savetxt("neighs_order.csv", np.array(order), delimiter=",")
+    # load neighs.csv
+    pool_map = genfromtxt('neighs.csv', delimiter=',')
+    pool_map = list(map(int, pool_map))
+
+    patches = []
+    for i in order:
+        org_vert = int(pool_map[i])
+        neighs = get_neighs(adj_mtx_org, coords_org, org_vert, 1)
+        patch = inputs[:, neighs]
+        patches.append(patch)
+
+    return np.array(patches)
+
+

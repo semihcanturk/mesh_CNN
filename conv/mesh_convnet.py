@@ -283,8 +283,8 @@ if __name__ == '__main__':
         train_images = np.expand_dims(train_images, axis=1) / 255
         test_images = np.expand_dims(test_images, axis=1) / 255
 
-        train_batch = mesh_traversal.mesh_strider_batch(adj_mtx, train_images, coords, faces, center, r, stride)
-        test_batch = mesh_traversal.mesh_strider_batch(adj_mtx, test_images, coords, faces, center, r, stride)
+        train_batch = mesh_traversal.mesh_strider_batch(adj_mtx, train_images, coords, faces, center, r, stride, )
+        test_batch = mesh_traversal.mesh_strider_batch(adj_mtx, test_images, coords, faces, center, r, stride, )
 
         pickle.dump((train_batch, train_labels, test_batch, test_labels,
                      adj_mtx, mesh_vals, coords, faces), open("data.pickle", "wb"))

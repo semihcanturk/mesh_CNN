@@ -111,8 +111,11 @@ def load():
         coords_gii = genfromtxt('coords.csv', delimiter=',')
         faces_gii = genfromtxt('faces.csv', delimiter=',')
     except:
-        file_gii = './load_data/601127.L.inflated.32k_fs_LR.surf.gii'
-        file_gii = os.path.join(file_gii)
+        # try:
+        #     file_gii = './load_data/601127.L.inflated.32k_fs_LR.surf.gii'
+        #     file_gii = os.path.join(file_gii)
+        # except:
+        file_gii = '/Users/semo/PycharmProjects/Conv_CNN/fmri_convnet/load_data/601127.L.inflated.32k_fs_LR.surf.gii'
         img = nib.load(file_gii)
 
         # these are the spatial coordinates
