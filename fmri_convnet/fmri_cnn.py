@@ -69,7 +69,7 @@ def build_batch(idxs, cache=None):
             print(datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
 
             data = train_images[(i*int(ct_train/4)):((i+1)*int(ct_train/4))]
-            train_batch = mesh_traversal.mesh_strider_batch(adj_mtx, data, coords, faces, center, r, stride, cache)
+            train_batch = mesh_traversal.mesh_strider_batch(adj_mtx, data, coords, r, stride, cache)
 
             if i == 0:
                 with h5py.File('train_0.h5', 'w') as hf:
@@ -178,19 +178,12 @@ class conv_layer(object):
         params = self.parser.get(param_vector, 'params')    # filters
         biases = self.parser.get(param_vector, 'biases')
         biases = biases.reshape(biases.shape[0], biases.shape[1], 1)
-        if inputs.shape[2] == 162:
-            adj_mtx = m2
-            coords = np.array(v2)
-            faces = f2
-        elif inputs.shape[2] == 42:
-            adj_mtx = m1
-            coords = np.array(v1)
-            faces = f1
-        elif inputs.shape[2] == 12:
-            adj_mtx = m0
-            coords = np.array(v0)
-            faces = f0
-        conv = mesh_traversal.tensorize_and_convolve_mesh(params, adj_mtx, inputs, coords, faces, center, r, stride)
+        if inputs.shape[2] == 5356:
+            coords = coords_2
+            faces = faces_2
+            adj_mtx = mesh_traversal.create_adj_mtx(coords_2, faces_2)
+
+        conv = mesh_traversal.tensorize_and_convolve_mesh(params, adj_mtx, inputs, coords, r, stride)
         return conv + biases
 
     def build_weights_dict(self, input_shape):
@@ -233,16 +226,13 @@ class maxpool_layer(object):
         #     coords = np.array(v0)
         #     order = o0
 
-        coords_new, faces_new = mesh_traversal.read_off('../mesh/new_mesh.off')
-        coords_new = np.array(coords_new)
-        faces_new = np.array(faces_new)[:, 1:]
-        #order = mesh_traversal.traverse_mesh(coords_new, faces_new, center=50)
+        #order = mesh_traversal.traverse_mesh(coords_new, faces_2, center=50)
         #np.savetxt("neighs_order.csv", np.array(order), delimiter=",")
         pool_map = genfromtxt('../mesh/neighs.csv', delimiter=',')
         pool_map = list(map(int, pool_map))
 
         patches = []
-        for i in range(coords_new.shape[0]): #order:
+        for i in range(coords_2.shape[0]): #order:
             org_vert = int(pool_map[i])
             neighs = mesh_traversal.get_neighs(adj_mtx, coords, org_vert, 1)
             patch = inputs[:, :, neighs]
@@ -254,36 +244,6 @@ class maxpool_layer(object):
         out = np.swapaxes(out, 1, 2)
 
         return out
-
-
-
-
-
-
-        new_shape = inputs.shape[:2]
-        for i in [0]:
-            pool_width = self.pool_shape[i]
-            img_width = inputs.shape[i + 2]
-            new_dim = int((img_width + 6) / (pool_width-2))
-            new_shape += (new_dim,)
-        result = None
-        for i in range(new_dim):
-            n = mesh_traversal.get_neighs(adj_mtx, coords, i, 1)
-            nlist = None
-            for neighbor in n:
-                x = inputs[:, :, order.index(neighbor)]
-                if nlist is None:
-                    nlist = np.expand_dims(x, axis=2)
-                else:
-                    x = np.expand_dims(x, axis=2)
-                    nlist = np.concatenate((nlist, x), axis=2)
-            subresult = np.mean(nlist, axis=2)
-            if result is None:
-                result = np.expand_dims(subresult, axis=2)
-            else:
-                subresult = np.expand_dims(subresult, axis=2)
-                result = np.concatenate((result, subresult), axis=2)
-        return result
 
 class full_layer(object):
     def __init__(self, size):
@@ -321,8 +281,7 @@ if __name__ == '__main__':
     input_shape = (1, 15, 32492, 7)
     layer_specs = [init_conv_layer((7,), 100),
                    maxpool_layer((6,)),
-
-                   #conv_layer((7,), 2),
+                   conv_layer((7,), 200),
                    #maxpool_layer((6,)),
 
                    tanh_layer(120),
@@ -383,7 +342,7 @@ if __name__ == '__main__':
         with h5py.File('test.h5', 'r') as hf:
             test_batch = hf['test'][:]
     except:
-        test_batch, cache = mesh_traversal.mesh_strider_batch(adj_mtx, test_images, coords, faces, center, r, stride, dict())
+        test_batch, cache = mesh_traversal.mesh_strider_batch(adj_mtx, test_images, coords, r, stride, dict())
         with h5py.File('test.h5', 'w') as hf:
             hf.create_dataset("test", data=test_batch)
 
@@ -442,6 +401,10 @@ if __name__ == '__main__':
     #o0 = mesh_traversal.traverse_mesh(np.array(v0), f0, center, stride)
     #rem0 = set(range(12)).difference(set(o0))
     #o0 = o0 + list(rem0)
+
+    coords_2, faces_2 = mesh_traversal.read_off('../mesh/new_mesh.off')
+    coords_2 = np.array(coords_2)
+    faces_2 = np.array(faces_2)[:, 1:]
 
     train_labels = one_hot(train_labels, 6)
     test_labels = one_hot(test_labels, 6)

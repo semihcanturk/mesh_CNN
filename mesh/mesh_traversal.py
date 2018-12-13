@@ -698,14 +698,12 @@ def mesh_strider(adj_mtx, mesh_vals, coords, faces, center, radius, stride):
     return patches
 
 
-def mesh_strider_batch(adj_mtx, vals_list, coords, faces, center, r, stride, cache):
+def mesh_strider_batch(adj_mtx, vals_list, coords, r, stride, cache=None):
     """
     Returns a list of patches after traversing and obtaining the patches for each mesh
     :param cache:
     :param adj_mtx: adjacency matrix of the mesh
     :param coords:  coordinates of each vertes
-    :param faces:   the vertices in each triangle of the mesh
-    :param center:  center vertex
     :param radius:  radius for the patches
     :param stride:  stride in each traversal step
     :return:    array of patches in traversal order, in form of list of lists
@@ -832,7 +830,7 @@ def mesh_convolve_iter(a, adj_mtx, vals_list, coords, faces, center, r, stride):
     """
 
     a_dims = a.shape
-    strided_mesh = mesh_strider_batch(adj_mtx, vals_list, coords, faces, center, r, stride, )
+    strided_mesh = mesh_strider_batch(adj_mtx, vals_list, coords, r, stride)
     mdi = MeshDataIterator(strided_mesh)
 
     out = []    #TODO: Consider dividing by norm
@@ -858,7 +856,7 @@ def mesh_convolve_iter(a, adj_mtx, vals_list, coords, faces, center, r, stride):
     return out
 
 
-def tensorize_and_convolve_mesh(a, adj_mtx, vals_list, coords, faces, center, r, stride):
+def tensorize_and_convolve_mesh(a, adj_mtx, vals_list, coords, r, stride):
     """
     Strides the mesh and applies convolution operation. Prepares tensors within the function, so not as efficient as
     mesh_convolve_tensorized(). If operating on already strided data, use mesh_convolve_tensorized() or
@@ -873,7 +871,7 @@ def tensorize_and_convolve_mesh(a, adj_mtx, vals_list, coords, faces, center, r,
     #with open('conv_objects.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
     #    pickle.dump([filters, adj_mtx, vals_list, coords, faces, center, r, stride], f)
 
-    strided_mesh = mesh_strider_batch(adj_mtx, vals_list, coords, faces, center, r, stride, )
+    strided_mesh = mesh_strider_batch(adj_mtx, vals_list, coords, r, stride, None)
     try:
         out = npo.einsum(a, [0, 1, 2], strided_mesh, [3, 4, 2])
     except:

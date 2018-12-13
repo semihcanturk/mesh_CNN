@@ -127,7 +127,7 @@ class conv_layer(object):
             adj_mtx = m0
             coords = np.array(v0)
             faces = f0
-        conv = mesh_traversal.tensorize_and_convolve_mesh(params, adj_mtx, inputs, coords, faces, center, r, stride)
+        conv = mesh_traversal.tensorize_and_convolve_mesh(params, adj_mtx, inputs, coords, r, stride)
         return conv + biases
 
     def build_weights_dict(self, input_shape):
@@ -249,8 +249,8 @@ if __name__ == '__main__':
     input_shape = (1, 162, 7,)
     layer_specs = [init_conv_layer((7,), 6),
                    maxpool_layer((6,)),
-                   #conv_layer((7,), 2),
-                   #maxpool_layer((6,)),
+                   conv_layer((7,), 2),
+                   maxpool_layer((6,)),
                    tanh_layer(120),
                    #tanh_layer(84),
                    softmax_layer(3)]
@@ -283,8 +283,8 @@ if __name__ == '__main__':
         train_images = np.expand_dims(train_images, axis=1) / 255
         test_images = np.expand_dims(test_images, axis=1) / 255
 
-        train_batch = mesh_traversal.mesh_strider_batch(adj_mtx, train_images, coords, faces, center, r, stride, )
-        test_batch = mesh_traversal.mesh_strider_batch(adj_mtx, test_images, coords, faces, center, r, stride, )
+        train_batch = mesh_traversal.mesh_strider_batch(adj_mtx, train_images, coords, r, stride)
+        test_batch = mesh_traversal.mesh_strider_batch(adj_mtx, test_images, coords, r, stride)
 
         pickle.dump((train_batch, train_labels, test_batch, test_labels,
                      adj_mtx, mesh_vals, coords, faces), open("data.pickle", "wb"))
