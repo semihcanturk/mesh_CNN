@@ -6,7 +6,10 @@ Convolutional Neural Network Applications on Surface-Based Temporospatial Neuroi
 
 Semih Cantürk<sup>1</sup>, Cassiano Becker<sup>1</sup>, Edward Benjamin Fineran<sup>2</sup> and Victor M. Preciado<sup>1</sup>
 
-**1** University of Pennsylvania, Department of Electrical and Systems Engineering (Philadelphia, PA, United States); **2** University of Pennsylvania, Department of Computer and Information Science (Philadelphia, PA, United States)
+**1** University of Pennsylvania, Department of Electrical and Systems Engineering (Philadelphia, PA, United States)
+
+
+**2** University of Pennsylvania, Department of Computer and Information Science (Philadelphia, PA, United States)
 
 ## 1. Abstract
 
