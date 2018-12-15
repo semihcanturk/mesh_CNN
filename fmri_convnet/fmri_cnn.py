@@ -181,9 +181,10 @@ class conv_layer(object):
         if inputs.shape[2] == 5356:
             coords = coords_2
             faces = faces_2
-            adj_mtx = mesh_traversal.create_adj_mtx(coords_2, faces_2)
+            adj_mtx, _, _ = mesh_traversal.create_adj_mtx(coords_2, faces_2)
 
-        conv = mesh_traversal.tensorize_and_convolve_mesh(params, adj_mtx, inputs, coords, r, stride)
+        conv = mesh_traversal.tensorize_and_convolve_fmri(params, adj_mtx, inputs, coords, r, stride)
+
         return conv + biases
 
     def build_weights_dict(self, input_shape):
@@ -279,9 +280,9 @@ if __name__ == '__main__':
     # Network parameters
     L2_reg = 1.0
     input_shape = (1, 15, 32492, 7)
-    layer_specs = [init_conv_layer((7,), 100),
+    layer_specs = [init_conv_layer((7,), 60),
                    maxpool_layer((6,)),
-                   conv_layer((7,), 200),
+                   conv_layer((7,), 160),
                    #maxpool_layer((6,)),
 
                    tanh_layer(120),

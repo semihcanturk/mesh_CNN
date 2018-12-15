@@ -731,14 +731,16 @@ def mesh_strider_batch(adj_mtx, vals_list, coords, r, stride, cache=None):
 
             x = vals_list[:, :, [neighs], :]
             if len(neighs) < 7:
-                temp = npo.zeros((x.shape[0], x.shape[1], 1, 7-len(neighs), x.shape[4]))
-                x = npo.append(x, temp, axis=3)
+                temp = np.zeros((x.shape[0], x.shape[1], 1, 7-len(neighs), x.shape[4]))
+                x = np.append(x, temp, axis=3)
+            elif len(neighs) > 7:
+                x = x[:, :, :, :7, :]
             out.append(x)
 
         etime = time.time()
         print(etime-mtime)
 
-        out = np.array(out)
+        #out = np.array(out)
 
         return out
 
@@ -866,10 +868,6 @@ def tensorize_and_convolve_mesh(a, adj_mtx, vals_list, coords, r, stride):
     :param coords: coordinates of each vertex
     :return: result of the convolution operation
     """
-    #center = 93 # arbitrary
-    #r = 1   # arbitrary
-    #with open('conv_objects.pkl', 'wb') as f:  # Python 3: open(..., 'wb')
-    #    pickle.dump([filters, adj_mtx, vals_list, coords, faces, center, r, stride], f)
 
     strided_mesh = mesh_strider_batch(adj_mtx, vals_list, coords, r, stride, None)
     try:
@@ -884,6 +882,38 @@ def tensorize_and_convolve_mesh(a, adj_mtx, vals_list, coords, r, stride):
 
     out = out[0]
     out = np.swapaxes(out, 0, 1)
+    return out
+
+def tensorize_and_convolve_fmri(a, adj_mtx, vals_list, coords, r, stride):
+    """
+    Strides the mesh and applies convolution operation. Prepares tensors within the function, so not as efficient as
+    mesh_convolve_tensorized(). If operating on already strided data, use mesh_convolve_tensorized() or
+    mesh_convolve_tensorized_dyn().
+    :param filters: list of filters
+    :param adj_mtx: adjacency matrix
+    :param coords: coordinates of each vertex
+    :return: result of the convolution operation
+    """
+
+    vals_list = np.expand_dims(vals_list, axis=1)
+    vals_list = np.swapaxes(vals_list, 2, 3)
+    vals_list = vals_list._value
+
+    strided_mesh = mesh_strider_batch(adj_mtx, vals_list, coords, r, stride, None)
+    strided_vers = np.squeeze(np.array(strided_mesh))
+    try:
+        out = np.einsum(a, [3, 4, 2], strided_vers, [0, 1, 2, 3])
+    except:
+        try:
+            a = a._value
+            out = np.einsum(a, [3, 4, 2], strided_vers, [0, 1, 2, 3])
+        except:
+            strided_vers = strided_vers._value
+            out = np.einsum(a, [3, 4, 2], strided_vers, [0, 1, 2, 3])
+
+    #out = out[0]
+    out = np.swapaxes(out, 0, 1)
+    out = np.swapaxes(out, 1, 2)
     return out
 
 

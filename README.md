@@ -92,6 +92,20 @@ This classification problem was previously explored through a MLP approach. A tw
 
 ## 7. Bibliography
 
-<div id="MPBibliographyElement:95E9ED74-DED9-42FD-E2E4-2FABD2E55D29">
+Chen, S. & Li, X., 2012. Functional magnetic resonance imaging for imaging neural activity in the human brain: The annual progress. _Computational and mathematical methods in medicine._
 
-</div>
+Elam, J.S. & Van Essen, P.D., 2013. Human Connectome Project. In _Encyclopedia of computational neuroscience._
+
+Fischl, B. & Dale, A.M., 2000. Measuring the thickness of the human cerebral cortex from magnetic resonance images. _Proceedings of the National Academy of Sciences._
+
+Heinonen, T., Lahtinen, A. & Häkkinen, V., 1999. Implementation of three-dimensional EEG brain mapping. _Computers and Biomedical Research._
+
+Krizhevsky, A., Sutskever, I. & Hinton, G.E., 2012. 1 ImageNet Classification with Deep Convolutional Neural Networks. _Advances In Neural Information Processing Systems._
+
+LeCun, Y. et al., 1998. Gradient-based learning applied to document recognition. _Proceedings of the IEEE._
+
+LeCun, Y. & Bengio, Y., 1998. Convolutional Networks for Images, Speech, and Time Series. In _The handbook of brain theory and neural networks._
+
+Seong, S.-B., Pae, C. & Park, H.-J., 2018. Geometric Convolutional Neural Network for Analyzing Surface-Based Neuroimaging Data. _Frontiers in Neuroinformatics._
+
+
