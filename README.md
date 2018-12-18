@@ -39,6 +39,8 @@ In high-level architecture, the mCNN is analogous to conventional CNNs: it is co
 
 </div>
 
+![alt text](./figures/brain.gif)
+
 #### 3.1.1. Convolution Layer 
 
 In conventional CNNs, the convolution filters are defined by regular shapes; a square is often used due to its trivial translatability to 2D array data structures. These filters are then convolved samples from the data which are congruent, which are called “patches". This sampling operation is referred to as “striding”, where patches from data are called iteratively in a predefined order.

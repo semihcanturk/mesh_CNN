@@ -709,7 +709,7 @@ def mesh_strider_batch(adj_mtx, vals_list, coords, r, stride, cache=None):
     :return:    array of patches in traversal order, in form of list of lists
     """
     out = []
-    stime = time.time()
+    #stime = time.time()
     # try:
     #     vertices = pickle.load(open("vertices.pkl", "rb"))
     # except:
@@ -722,8 +722,8 @@ def mesh_strider_batch(adj_mtx, vals_list, coords, r, stride, cache=None):
     #     with open('vertices.pkl', 'wb') as f:
     #         pickle.dump(vertices, f)
 
-    mtime = time.time()
-    print(mtime-stime)
+    #mtime = time.time()
+    #print(mtime-stime)
 
     if cache is None:
         for v in range(vals_list.shape[2]): #vertices:
@@ -737,8 +737,8 @@ def mesh_strider_batch(adj_mtx, vals_list, coords, r, stride, cache=None):
                 x = x[:, :, :, :7, :]
             out.append(x)
 
-        etime = time.time()
-        print(etime-mtime)
+        #etime = time.time()
+        #print(etime-mtime)
 
         #out = np.array(out)
 
@@ -758,8 +758,8 @@ def mesh_strider_batch(adj_mtx, vals_list, coords, r, stride, cache=None):
                 x = npo.append(x, temp, axis=3)
             out.append(x)
 
-        etime = time.time()
-        print(etime - mtime)
+        #etime = time.time()
+        #print(etime - mtime)
 
         out = np.array(out)
 
@@ -901,15 +901,16 @@ def tensorize_and_convolve_fmri(a, adj_mtx, vals_list, coords, r, stride):
 
     strided_mesh = mesh_strider_batch(adj_mtx, vals_list, coords, r, stride, None)
     strided_vers = np.squeeze(np.array(strided_mesh))
+    a = np.array([a])
     try:
-        out = np.einsum(a, [3, 4, 2], strided_vers, [0, 1, 2, 3])
+        out = npo.einsum(a, [5, 3, 4, 2], strided_vers, [0, 1, 2, 3])
     except:
         try:
             a = a._value
-            out = np.einsum(a, [3, 4, 2], strided_vers, [0, 1, 2, 3])
+            out = npo.einsum(a, [5, 3, 4, 2], strided_vers, [0, 1, 2, 3])
         except:
             strided_vers = strided_vers._value
-            out = np.einsum(a, [3, 4, 2], strided_vers, [0, 1, 2, 3])
+            out = npo.einsum(a, [5, 3, 4, 2], strided_vers, [0, 1, 2, 3])
 
     #out = out[0]
     out = np.swapaxes(out, 0, 1)

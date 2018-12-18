@@ -184,6 +184,7 @@ class conv_layer(object):
             adj_mtx, _, _ = mesh_traversal.create_adj_mtx(coords_2, faces_2)
 
         conv = mesh_traversal.tensorize_and_convolve_fmri(params, adj_mtx, inputs, coords, r, stride)
+        conv = np.squeeze(conv)
 
         return conv + biases
 
@@ -293,7 +294,7 @@ if __name__ == '__main__':
     param_scale = 0.1
     learning_rate = 1e-3
     momentum = 0.9
-    batch_size = 50
+    batch_size = 150
     num_epochs = 50
 
     # Load and process mesh data
