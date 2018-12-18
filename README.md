@@ -53,11 +53,11 @@ The mCNN defines this convolution operation as a _vertex domain mesh convolution
 3.  From then on, the order is trivial. In the direction defined in 2), all unvisited vertices are visited in order.
 4.  The list of all unseen neighbors of the vertices from the current layer is delegated as the next layer.
 
-Then, to account for the time dimension, a time window H is selected **(Figures 1, 2A)**: The convolution tensor for one example contains the patches from all vertices, for all time samples within the time window H. Multiple examples (270 for our motor task classification experiment) are generated from a single patient by slicing running windows of width H through the patient data, which include 284 consecutive time samples **(Figure 1A)**. The convolution tensors are constructed by flattening the patch dimension for each vertex n to form a row vector. This results in a (l \\times N \\times H) tensor, where l is the length of a single patch and Nis the total number of vertices in the mesh. A single HCP patient data then produces 270 of these tensors. Each filter then also assumes the (l \\times H) shape, with the convolutional layer possessing f number of filters. The convolution operation then, dimensionally speaking, takes place as the following:
+Then, to account for the time dimension, a time window H is selected **(Figures 1, 2A)**: The convolution tensor for one example contains the patches from all vertices, for all time samples within the time window H. Multiple examples (270 for our motor task classification experiment) are generated from a single patient by slicing running windows of width H through the patient data, which include 284 consecutive time samples **(Figure 1A)**. The convolution tensors are constructed by flattening the patch dimension for each vertex n to form a row vector. This results in a ![alt text](./figures/eq2.svg) tensor, where l is the length of a single patch and Nis the total number of vertices in the mesh. A single HCP patient data then produces 270 of these tensors. Each filter then also assumes the ![alt text](./figures/eq3.svg) shape, with the convolutional layer possessing f number of filters. The convolution operation then, dimensionally speaking, takes place as the following:
 
 <div id="MPEquationElement:C465A36C-87B5-45AF-BBC9-9CE1B0736758">
 
-(l \\times N \\times H) \* (f \\times l \\times H) = (f \\times N)
+![alt text](figures/eq1.svg)
 
 </div>
 
@@ -67,7 +67,7 @@ Then, to account for the time dimension, a time window H is selected **(Figures 
 
 </div>
 
-**Figure 1A** demonstrates the spatiotemporal nature of the data: Each vertex has a position in 3D space and is connected to neighbor vertices via edges, and also contains a vector of 284 consecutive fMRI activation values that change over time. It also includes information about the HCP experiment procedure; the activation over time plot shows when the cues are given to the subjects, and which body part was moved with each cue**.** **Figure 1A** is then connected to **Figure 1B** by showing how a H second window is translated into a tensor dimension. **1B** also visualizes the tensor operations in the convolution layer, while **Figure 2A** illustrates the implementation of this tensorization process in detail. **Figure 1C t**hen displays the high-level architecture of the mCNN, which is very similar to that of a conventional CNN.
+**Figure 1A** demonstrates the spatiotemporal nature of the data: Each vertex has a position in 3D space and is connected to neighbor vertices via edges, and also contains a vector of 284 consecutive fMRI activation values that change over time. It also includes information about the HCP experiment procedure; the activation over time plot shows when the cues are given to the subjects, and which body part was moved with each cue. **Figure 1A** is then connected to **Figure 1B** by showing how a H second window is translated into a tensor dimension. **1B** also visualizes the tensor operations in the convolution layer, while **Figure 2A** illustrates the implementation of this tensorization process in detail. **Figure 1C** then displays the high-level architecture of the mCNN, which is very similar to that of a conventional CNN.
 
 #### 3.1.2. Pooling Layer
 
