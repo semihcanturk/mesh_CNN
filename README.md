@@ -40,6 +40,7 @@ In high-level architecture, the mCNN is analogous to conventional CNNs: it is co
 </div>
 
 ![alt text](./figures/brain.gif)
+
 **Figure 3:** Example of partial mesh traversal over cortical surface
 
 #### 3.1.1. Convolution Layer 
