@@ -897,7 +897,11 @@ def tensorize_and_convolve_fmri(a, adj_mtx, vals_list, coords, r, stride):
 
     vals_list = np.expand_dims(vals_list, axis=1)
     vals_list = np.swapaxes(vals_list, 2, 3)
-    vals_list = vals_list._value
+
+    try:
+        vals_list = vals_list._value
+    except:
+        pass
 
     strided_mesh = mesh_strider_batch(adj_mtx, vals_list, coords, r, stride, None)
     strided_vers = np.squeeze(np.array(strided_mesh))
