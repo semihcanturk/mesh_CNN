@@ -36,6 +36,8 @@ def create_adj_mtx(coords_file, tri_file, is_sparse=True):
         coords = coords_file
         triangles = tri_file
 
+    triangles = np.array(triangles)
+
     verts = []
     for i in coords:
         verts.append(mesh.add_vertex(i))
@@ -1033,9 +1035,11 @@ def read_off(file):
         return vertices, faces
 
 
-def save_closest(vertex, new_coords, coords):
-    v, _ = read_off('./new_mesh.off')
-    coords = genfromtxt('../data/data0.csv', delimiter=',')
+def save_closest():
+    v, _ = read_off('../fmri_convnet/mesh_2.off')
+    coords, _ = read_off('../fmri_convnet/mesh_1.off')
+    #v = np.array(v)
+    #coords = np.array(coords)
     closest_list = []
     for i in v:
         dist = 100
@@ -1044,31 +1048,12 @@ def save_closest(vertex, new_coords, coords):
             temp = (i[0]-j[0])**2 + (i[1]-j[1])**2 + (i[2]-j[2])**2
             if temp < dist:
                 dist = temp
-                ix = np.where(coords == j)[0][0]
+                ix =coords.index(j)#np.where(coords == j)[0][0]
         closest_list.append(ix)
 
-    npo.savetxt("neighs.csv", np.array(closest_list), delimiter=",")
+    npo.savetxt("neighs_L2.csv", np.array(closest_list), delimiter=",")
 
 
-def get_closest(adj_mtx_org, coords_org, inputs):
 
-
-    coords, faces = read_off('./new_mesh.off')
-    coords = np.array(coords)
-    faces = np.array(faces)[:, 1:]
-    order = traverse_mesh(coords, faces, center=50)
-    npo.savetxt("neighs_order.csv", np.array(order), delimiter=",")
-    # load neighs.csv
-    pool_map = genfromtxt('neighs.csv', delimiter=',')
-    pool_map = list(map(int, pool_map))
-
-    patches = []
-    for i in order:
-        org_vert = int(pool_map[i])
-        neighs = get_neighs(adj_mtx_org, coords_org, org_vert, 1)
-        patch = inputs[:, neighs]
-        patches.append(patch)
-
-    return np.array(patches)
 
 

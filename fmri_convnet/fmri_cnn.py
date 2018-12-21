@@ -84,11 +84,6 @@ def build_batch(idxs, cache=None):
                 with h5py.File('train_3.h5', 'w') as hf:
                     hf.create_dataset("train", data=train_batch)
 
-
-
-
-
-
     tr_batch = np.concatenate((zero_train, one_train, two_train, three_train), axis=1)
 
     tr_batch = np.swapaxes(tr_batch, 1, 0)
@@ -179,6 +174,10 @@ class conv_layer(object):
         biases = self.parser.get(param_vector, 'biases')
         biases = biases.reshape(biases.shape[0], biases.shape[1], 1)
         if inputs.shape[2] == 5356:
+            coords = coords_1
+            faces = faces_1
+            adj_mtx, _, _ = mesh_traversal.create_adj_mtx(coords_1, faces_1)
+        elif inputs.shape[2] == 914:
             coords = coords_2
             faces = faces_2
             adj_mtx, _, _ = mesh_traversal.create_adj_mtx(coords_2, faces_2)
@@ -208,35 +207,34 @@ class maxpool_layer(object):
     def build_weights_dict(self, input_shape):
         output_shape = list(input_shape)
         for i in [0]:
-            #assert input_shape[i + 1] % self.pool_shape[i] == 0, \
-            #    "maxpool shape should tile input exactly"
-            output_shape[i + 1] = 5356 #TODO: Generalize
-            # int((input_shape[i + 1] + 6) / (self.pool_shape[i]-2))
+            if input_shape[1] == 32492:
+                output_shape[i + 1] = 5356
+            elif input_shape[1] == 5356:
+                output_shape[i + 1] = 914
         return 0, output_shape
 
     def forward_pass(self, inputs, param_vector):
-        # if inputs.shape[2] == 162:
-        #     adj_mtx = m2
-        #     coords = np.array(v2)
-        #     order = o2
-        # elif inputs.shape[2] == 42:
-        #     adj_mtx = m1
-        #     coords = np.array(v1)
-        #     order = o1
-        # elif inputs.shape[2] ==12:
-        #     adj_mtx = m0
-        #     coords = np.array(v0)
-        #     order = o0
+        if inputs.shape[2] == 32492:
+            pool_map = genfromtxt('../mesh/neighs_L1.csv', delimiter=',')
+            coords_old = coords_0
+            faces_old = faces_0
+            coords = coords_1
+            faces = faces_1
+        elif inputs.shape[2] == 5356:
+            pool_map = genfromtxt('../mesh/neighs_L2.csv', delimiter=',')
+            coords_old = coords_1
+            faces_old = faces_1
+            coords = coords_2
+            faces = faces_2
 
-        #order = mesh_traversal.traverse_mesh(coords_new, faces_2, center=50)
-        #np.savetxt("neighs_order.csv", np.array(order), delimiter=",")
-        pool_map = genfromtxt('../mesh/neighs.csv', delimiter=',')
+        adj_mtx_old, _, _ = mesh_traversal.create_adj_mtx(coords_old, faces_old)
+        adj_mtx, _, _ = mesh_traversal.create_adj_mtx(coords, faces)
         pool_map = list(map(int, pool_map))
 
         patches = []
-        for i in range(coords_2.shape[0]): #order:
+        for i in range(coords.shape[0]): #order:
             org_vert = int(pool_map[i])
-            neighs = mesh_traversal.get_neighs(adj_mtx, coords, org_vert, 1)
+            neighs = mesh_traversal.get_neighs(adj_mtx_old, coords_old, org_vert, 1)
             patch = inputs[:, :, neighs]
             patch = np.mean(patch, axis=2)
             patches.append(patch)
@@ -284,7 +282,7 @@ if __name__ == '__main__':
     layer_specs = [init_conv_layer((7,), 60),
                    maxpool_layer((6,)),
                    conv_layer((7,), 160),
-                   #maxpool_layer((6,)),
+                   maxpool_layer((6,)),
 
                    tanh_layer(120),
                    #tanh_layer(84),
@@ -404,7 +402,14 @@ if __name__ == '__main__':
     #rem0 = set(range(12)).difference(set(o0))
     #o0 = o0 + list(rem0)
 
-    coords_2, faces_2 = mesh_traversal.read_off('../mesh/new_mesh.off')
+    coords_0 = coords
+    faces_0 = faces
+
+    coords_1, faces_1 = mesh_traversal.read_off('../fmri_convnet/mesh_1.off')
+    coords_1 = np.array(coords_1)
+    faces_1 = np.array(faces_1)[:, 1:]
+
+    coords_2, faces_2 = mesh_traversal.read_off('../fmri_convnet/mesh_2.off')
     coords_2 = np.array(coords_2)
     faces_2 = np.array(faces_2)[:, 1:]
 
