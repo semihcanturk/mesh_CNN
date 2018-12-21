@@ -236,6 +236,52 @@ class maxpool_layer(object):
             org_vert = int(pool_map[i])
             neighs = mesh_traversal.get_neighs(adj_mtx_old, coords_old, org_vert, 1)
             patch = inputs[:, :, neighs]
+            patch = np.max(patch, axis=2)
+            patches.append(patch)
+
+        out = np.array(patches)
+        out = np.swapaxes(out, 0, 1)      #TODO: MAKE SURE THIS WORKS
+        out = np.swapaxes(out, 1, 2)
+
+        return out
+
+
+class meanpool_layer(object):
+    def __init__(self, pool_shape):
+        self.pool_shape = pool_shape
+
+    def build_weights_dict(self, input_shape):
+        output_shape = list(input_shape)
+        for i in [0]:
+            if input_shape[1] == 32492:
+                output_shape[i + 1] = 5356
+            elif input_shape[1] == 5356:
+                output_shape[i + 1] = 914
+        return 0, output_shape
+
+    def forward_pass(self, inputs, param_vector):
+        if inputs.shape[2] == 32492:
+            pool_map = genfromtxt('../mesh/neighs_L1.csv', delimiter=',')
+            coords_old = coords_0
+            faces_old = faces_0
+            coords = coords_1
+            faces = faces_1
+        elif inputs.shape[2] == 5356:
+            pool_map = genfromtxt('../mesh/neighs_L2.csv', delimiter=',')
+            coords_old = coords_1
+            faces_old = faces_1
+            coords = coords_2
+            faces = faces_2
+
+        adj_mtx_old, _, _ = mesh_traversal.create_adj_mtx(coords_old, faces_old)
+        adj_mtx, _, _ = mesh_traversal.create_adj_mtx(coords, faces)
+        pool_map = list(map(int, pool_map))
+
+        patches = []
+        for i in range(coords.shape[0]): #order:
+            org_vert = int(pool_map[i])
+            neighs = mesh_traversal.get_neighs(adj_mtx_old, coords_old, org_vert, 1)
+            patch = inputs[:, :, neighs]
             patch = np.mean(patch, axis=2)
             patches.append(patch)
 
