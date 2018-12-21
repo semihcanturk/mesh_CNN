@@ -384,7 +384,7 @@ def traverse_mesh(coords, faces, center, stride=1, verbose=False, is_sparse=True
             l = adj_mtx.shape[0]
         else:
             l = len(adj_mtx[0])
-        # until all vertices are seen #TODO: Fix inequality bug
+        # until all vertices are seen
         while len(verts) <= 0.95 * l:
             # this is the closest vertex of the new level
             # find the ordering of the level
@@ -502,7 +502,6 @@ def traverse_mesh(coords, faces, center, stride=1, verbose=False, is_sparse=True
 
 
 def find_region(adj_mtx, mesh_vals, coords, vertex, r, neighs=False):
-    # TODO: Account for values - what are the values that we obtain from each vertex?
     # We should return the values from the vertices, not the vertices themselves in the final implementation.
     """
     Given a center and radius, calculates the traversal list of all vertices in a given depth radius
@@ -700,9 +699,10 @@ def mesh_strider(adj_mtx, mesh_vals, coords, faces, center, radius, stride):
     return patches
 
 
-def mesh_strider_batch(adj_mtx, vals_list, coords, r, stride, cache=None):
+def mesh_strider_batch(adj_mtx, vals_list, coords, r, stride, cache=None, pool_type="max"):
     """
     Returns a list of patches after traversing and obtaining the patches for each mesh
+    :param pool_type:
     :param cache:
     :param adj_mtx: adjacency matrix of the mesh
     :param coords:  coordinates of each vertes
@@ -728,44 +728,68 @@ def mesh_strider_batch(adj_mtx, vals_list, coords, r, stride, cache=None):
     #print(mtime-stime)
 
     if cache is None:
-        for v in range(vals_list.shape[2]): #vertices:
-            neighs = get_neighs(adj_mtx, coords, v, r)
+        if pool_type == "max":
+            for v in range(vals_list.shape[2]):  # vertices:
+                neighs = get_neighs(adj_mtx, coords, v, r)
+                x = vals_list[:, :, [neighs], :]
 
-            x = vals_list[:, :, [neighs], :]
-            if len(neighs) < 7:
-                temp = np.zeros((x.shape[0], x.shape[1], 1, 7-len(neighs), x.shape[4]))
-                x = np.append(x, temp, axis=3)
-            elif len(neighs) > 7:
-                x = x[:, :, :, :7, :]
-            out.append(x)
+                if len(neighs) < 7:
+                    temp = np.zeros((x.shape[0], x.shape[1], 1, 7 - len(neighs), x.shape[4]))
+                    x = np.append(x, temp, axis=3)
+                elif len(neighs) > 7:
+                    x = x[:, :, :, :7, :]
+                out.append(x)
 
-        #etime = time.time()
-        #print(etime-mtime)
+        elif pool_type == "mean":
+            for v in range(vals_list.shape[2]):  # vertices:
+                neighs = get_neighs(adj_mtx, coords, v, r)
 
-        #out = np.array(out)
+                x = vals_list[:, :, [neighs], :]
+                if len(neighs) < 7:
+                    temp = np.mean(x, axis=3, keepdims=True)
+                    x = np.append(x, temp, axis=3)
+                elif len(neighs) > 7:
+                    x = x[:, :, :, :7, :]
+                out.append(x)
 
+        out = np.array(out)
         return out
 
     else:
-        for v in range(vals_list.shape[2]):
-            try:
-                neighs = cache[v]
-            except:
-                neighs = get_neighs(adj_mtx, coords, v, r)
-                cache[v] = neighs
+        if pool_type == "max":
+            for v in range(vals_list.shape[2]):  # vertices:
+                try:
+                    neighs = cache[v]
+                except:
+                    neighs = get_neighs(adj_mtx, coords, v, r)
+                    cache[v] = neighs
+                x = vals_list[:, :, [neighs], :]
 
-            x = vals_list[:, :, [neighs], :]
-            if len(neighs) < 7:
-                temp = npo.zeros((x.shape[0], x.shape[1], 1, 7 - len(neighs), x.shape[4]))
-                x = npo.append(x, temp, axis=3)
-            out.append(x)
+                if len(neighs) < 7:
+                    temp = np.zeros((x.shape[0], x.shape[1], 1, 7 - len(neighs), x.shape[4]))
+                    x = np.append(x, temp, axis=3)
+                elif len(neighs) > 7:
+                    x = x[:, :, :, :7, :]
+                out.append(x)
 
-        #etime = time.time()
-        #print(etime - mtime)
+        elif pool_type == "mean":
+            for v in range(vals_list.shape[2]):  # vertices:
+                try:
+                    neighs = cache[v]
+                except:
+                    neighs = get_neighs(adj_mtx, coords, v, r)
+                    cache[v] = neighs
+                x = vals_list[:, :, [neighs], :]
+
+                if len(neighs) < 7:
+                    temp = np.mean(x, axis=3, keepdims=True)
+                    x = np.append(x, temp, axis=3)
+                elif len(neighs) > 7:
+                    x = x[:, :, :, :7, :]
+                out.append(x)
 
         out = np.array(out)
-
-        return out, cache
+        return out
 
 
 def mesh_convolve(filters, adj_mtx, vals_list, coords, faces, center, r, stride):

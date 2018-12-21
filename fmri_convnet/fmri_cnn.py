@@ -20,8 +20,6 @@ center = 93
 r = 1
 stride = 1
 level = 2
-order = None
-
 
 class WeightsParser(object):
     """A helper class to index into a parameter vector."""
@@ -232,7 +230,7 @@ class maxpool_layer(object):
         pool_map = list(map(int, pool_map))
 
         patches = []
-        for i in range(coords.shape[0]): #order:
+        for i in range(coords.shape[0]):
             org_vert = int(pool_map[i])
             neighs = mesh_traversal.get_neighs(adj_mtx_old, coords_old, org_vert, 1)
             patch = inputs[:, :, neighs]
@@ -240,7 +238,7 @@ class maxpool_layer(object):
             patches.append(patch)
 
         out = np.array(patches)
-        out = np.swapaxes(out, 0, 1)      #TODO: MAKE SURE THIS WORKS
+        out = np.swapaxes(out, 0, 1)
         out = np.swapaxes(out, 1, 2)
 
         return out
@@ -278,7 +276,7 @@ class meanpool_layer(object):
         pool_map = list(map(int, pool_map))
 
         patches = []
-        for i in range(coords.shape[0]): #order:
+        for i in range(coords.shape[0]):
             org_vert = int(pool_map[i])
             neighs = mesh_traversal.get_neighs(adj_mtx_old, coords_old, org_vert, 1)
             patch = inputs[:, :, neighs]
@@ -286,7 +284,7 @@ class meanpool_layer(object):
             patches.append(patch)
 
         out = np.array(patches)
-        out = np.swapaxes(out, 0, 1)      #TODO: MAKE SURE THIS WORKS
+        out = np.swapaxes(out, 0, 1)
         out = np.swapaxes(out, 1, 2)
 
         return out
@@ -433,20 +431,7 @@ if __name__ == '__main__':
     test_batch = np.swapaxes(test_batch, 4, 5)
     test_batch = np.squeeze(test_batch, axis=(2, 3))
 
-
     stime0 = time.time()
-
-    order = mesh_traversal.traverse_mesh(coords, faces, center, stride)  # list of vertices, ordered
-    rem = set(range(adj_mtx.shape[0])).difference(set(order))
-    order = order + list(rem)
-
-    o2 = order
-    #o1 = mesh_traversal.traverse_mesh(np.array(v1), f1, center, stride)
-    #rem1 = set(range(42)).difference(set(o1))
-    #o1 = o1 + list(rem1)
-    #o0 = mesh_traversal.traverse_mesh(np.array(v0), f0, center, stride)
-    #rem0 = set(range(12)).difference(set(o0))
-    #o0 = o0 + list(rem0)
 
     coords_0 = coords
     faces_0 = faces
@@ -512,10 +497,6 @@ if __name__ == '__main__':
             train_labels_idx = np.append(train_labels_idx, train_labels_idx_3, axis=0)
             train_labels_idx = np.append(train_labels_idx, train_labels_idx_4, axis=0)
 
-            #try:
             grad_W = loss_grad(W, train_batch_idx, train_labels_idx)
             cur_dir = momentum * cur_dir + (1.0 - momentum) * grad_W
             W -= learning_rate * cur_dir
-            #except:
-            #    print("Batch skipped")
-                #cur_dir = 0
