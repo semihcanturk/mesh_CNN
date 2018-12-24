@@ -324,9 +324,9 @@ if __name__ == '__main__':
     L2_reg = 1.0
     input_shape = (1, 15, 32492, 7)
     layer_specs = [init_conv_layer((7,), 60),
-                   maxpool_layer((6,)),
+                   meanpool_layer((6,)),
                    conv_layer((7,), 160),
-                   maxpool_layer((6,)),
+                   meanpool_layer((6,)),
 
                    tanh_layer(120),
                    #tanh_layer(84),

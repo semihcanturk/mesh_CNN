@@ -728,65 +728,31 @@ def mesh_strider_batch(adj_mtx, vals_list, coords, r, stride, cache=None, pool_t
     #print(mtime-stime)
 
     if cache is None:
-        if pool_type == "max":
-            for v in range(vals_list.shape[2]):  # vertices:
-                neighs = get_neighs(adj_mtx, coords, v, r)
-                x = vals_list[:, :, [neighs], :]
+        for v in range(vals_list.shape[2]):  # vertices:
+            neighs = get_neighs(adj_mtx, coords, v, r)
+            x = vals_list[:, :, [neighs], :]
 
-                if len(neighs) < 7:
-                    temp = np.zeros((x.shape[0], x.shape[1], 1, 7 - len(neighs), x.shape[4]))
-                    x = np.append(x, temp, axis=3)
-                elif len(neighs) > 7:
-                    x = x[:, :, :, :7, :]
-                out.append(x)
-
-        elif pool_type == "mean":
-            for v in range(vals_list.shape[2]):  # vertices:
-                neighs = get_neighs(adj_mtx, coords, v, r)
-
-                x = vals_list[:, :, [neighs], :]
-                if len(neighs) < 7:
-                    temp = np.mean(x, axis=3, keepdims=True)
-                    x = np.append(x, temp, axis=3)
-                elif len(neighs) > 7:
-                    x = x[:, :, :, :7, :]
-                out.append(x)
+            if len(neighs) < 7:
+                temp = np.zeros((x.shape[0], x.shape[1], 1, 7 - len(neighs), x.shape[4]))
+                x = np.append(x, temp, axis=3)
+            elif len(neighs) > 7:
+                x = x[:, :, :, :7, :]
+            out.append(x)
 
         out = np.array(out)
         return out
 
     else:
-        if pool_type == "max":
-            for v in range(vals_list.shape[2]):  # vertices:
-                try:
-                    neighs = cache[v]
-                except:
-                    neighs = get_neighs(adj_mtx, coords, v, r)
-                    cache[v] = neighs
-                x = vals_list[:, :, [neighs], :]
+        for v in range(vals_list.shape[2]):  # vertices:
+            neighs = get_neighs(adj_mtx, coords, v, r)
+            x = vals_list[:, :, [neighs], :]
 
-                if len(neighs) < 7:
-                    temp = np.zeros((x.shape[0], x.shape[1], 1, 7 - len(neighs), x.shape[4]))
-                    x = np.append(x, temp, axis=3)
-                elif len(neighs) > 7:
-                    x = x[:, :, :, :7, :]
-                out.append(x)
-
-        elif pool_type == "mean":
-            for v in range(vals_list.shape[2]):  # vertices:
-                try:
-                    neighs = cache[v]
-                except:
-                    neighs = get_neighs(adj_mtx, coords, v, r)
-                    cache[v] = neighs
-                x = vals_list[:, :, [neighs], :]
-
-                if len(neighs) < 7:
-                    temp = np.mean(x, axis=3, keepdims=True)
-                    x = np.append(x, temp, axis=3)
-                elif len(neighs) > 7:
-                    x = x[:, :, :, :7, :]
-                out.append(x)
+            if len(neighs) < 7:
+                temp = np.zeros((x.shape[0], x.shape[1], 1, 7 - len(neighs), x.shape[4]))
+                x = np.append(x, temp, axis=3)
+            elif len(neighs) > 7:
+                x = x[:, :, :, :7, :]
+            out.append(x)
 
         out = np.array(out)
         return out
