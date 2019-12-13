@@ -103,7 +103,7 @@ This classification problem was previously explored through a MLP approach. A tw
 
 
 
-## 7. Bibliography
+## 4. Bibliography
 
 Chen, S. & Li, X., 2012. Functional magnetic resonance imaging for imaging neural activity in the human brain: The annual progress. _Computational and mathematical methods in medicine._
 
